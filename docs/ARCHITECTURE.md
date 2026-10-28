@@ -211,10 +211,13 @@ Python 3.12 (uv) · pandas · pandera · psycopg 3 · pytest · ruff · mypy · 
 | D4 | 2 linhas sem origem (−R$ 373 mil) e 18 valores nulos | **Aberta** — recomendação: manter as 2 com WARN; nulos = 0 com WARN. Bloqueia T3 |
 | D5 | Canal de coleta | ✅ ADR-004: Neon + app na Vercel |
 | D6 | Autenticação da Fase 2 | **Aberta** — decidir antes da Fase 2 |
+| D7 | Linha sem previsão preenchida | **Adotada no playbook:** saldo positivo assumido como realizado; categoria A_VALIDAR |
 
 ---
 
 ## 5. IMPLEMENTATION PLAN — Fase 1
+
+> **Operacional:** os prompts executáveis, a ordem final (T5 schema → T6 views → T7 carga+reconciliação → T8 CLI) e as decisões D1/D3/D4/D7 embutidas estão em `docs/PLAYBOOK_COPILOT.md`. Em caso de divergência, o playbook prevalece para execução; esta seção descreve a intenção.
 
 Ordem: T0 → T1 → … → T8. Nenhuma tarefa começa sem a anterior aprovada.
 
