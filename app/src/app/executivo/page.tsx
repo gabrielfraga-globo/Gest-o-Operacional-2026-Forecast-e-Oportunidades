@@ -94,7 +94,7 @@ export default async function PaginaExecutivo() {
               <h1 className="h1 titulo-area">Forecast Opex 2026</h1>
               <p className="lead">
                 {formatarMilhoes(resumo.saldo)} de saldo; {formatarMilhoes(resumo.oportunidadeAjustada)}{' '}
-                justificados como oportunidade e {formatarMilhoes(resumo.pressoes)} em pressão.{' '}
+                justificados como oportunidade e {formatarMilhoes(Math.abs(resumo.pressoes))} em pressão.{' '}
                 {formatarPercentual(pctComInput)} das linhas com previsão.
               </p>
             </div>
@@ -249,35 +249,42 @@ function TabelaLinhas<T extends LinhaTabela>({
         <p className="lead">{vazio}</p>
       ) : (
         <div className="tabela-rolagem">
-        <table className="tabela-compacta tabela-executiva">
-          <thead>
-            <tr>
-              <th scope="col">N4</th>
-              <th scope="col">Projeto</th>
-              <th scope="col">{colunaValor}</th>
-              <th scope="col">Responsável</th>
-              <th scope="col">Justificativa</th>
-            </tr>
-          </thead>
-          <tbody>
-            {linhas.map((l, i) => (
-              <tr key={`${l.n4}-${l.projeto}-${i}`}>
-                <td>{l.n4}</td>
-                <td className="celula-truncada" title={l.projeto}>
-                  {l.projeto}
-                </td>
-                <td className="num">{formatarReaisInteiro(valorDe(l))}</td>
-                <td className="celula-truncada" title={l.responsavel ?? ''}>
-                  {l.responsavel ?? '—'}
-                </td>
-                <td className="celula-truncada" title={l.justificativa ?? ''}>
-                  {l.justificativa ?? '—'}
-                </td>
+          <table className="tabela-compacta tabela-executiva">
+            <thead>
+              <tr>
+                <th scope="col">N4</th>
+                <th scope="col">Projeto</th>
+                <th scope="col" className="num">
+                  {colunaValor}
+                </th>
+                <th scope="col">Responsável</th>
+                <th scope="col">Justificativa</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {linhas.map((l, i) => (
+                <tr key={`${l.n4}-${l.projeto}-${i}`}>
+                  <td className="celula-truncada" title={l.n4} data-rotulo="N4">
+                    {l.n4}
+                  </td>
+                  <td className="celula-truncada" title={l.projeto} data-rotulo="Projeto">
+                    {l.projeto}
+                  </td>
+                  <td className="num" data-rotulo={colunaValor}>
+                    {formatarReaisInteiro(valorDe(l))}
+                  </td>
+                  <td className="celula-truncada" title={l.responsavel ?? ''} data-rotulo="Responsável">
+                    {l.responsavel ?? '—'}
+                  </td>
+                  <td className="celula-truncada" title={l.justificativa ?? ''} data-rotulo="Justificativa">
+                    {l.justificativa ?? '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
+
       )}
     </section>
   );

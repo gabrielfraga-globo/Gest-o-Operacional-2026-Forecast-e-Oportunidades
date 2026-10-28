@@ -885,14 +885,33 @@ body {
   height: auto;
 }
 
-/* Abaixo de 768px o texto do SVG ficaria menor que 8px; o gráfico rola dentro de si, não a página. */
-@media (max-width: 768px) {
-  .grafico-figura {
-    overflow-x: auto;
+.barra-total {
+  fill: var(--cat-fin-operacional);
+}
+
+.barra-reducao {
+  fill: var(--text-subtle);
+}
+
+.grafico-cascata-compacto {
+  display: none;
+}
+
+.grafico-cascata-compacto .grafico-rotulo-valor {
+  font-size: 19px;
+}
+
+.grafico-cascata-compacto .grafico-rotulo-eixo {
+  font-size: 15px;
+}
+
+@media (max-width: 639px) {
+  .grafico-cascata-completo {
+    display: none;
   }
 
-  .grafico-svg {
-    min-width: 480px;
+  .grafico-cascata-compacto {
+    display: block;
   }
 }
 
@@ -952,12 +971,16 @@ body {
 
 .n4-linha {
   display: grid;
-  grid-template-columns: minmax(0, 7rem) minmax(0, 1fr);
+  grid-template-columns: 220px minmax(0, 1fr) 170px;
   gap: 0.25rem 0.75rem;
   align-items: center;
 }
 
 .n4-nome {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 0.875rem;
   font-weight: 700;
 }
@@ -969,10 +992,11 @@ body {
 }
 
 .n4-valores {
-  grid-column: 1 / -1;
-  display: flex;
-  justify-content: flex-end;
-  gap: 1.25rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  justify-items: end;
+  width: 170px;
+  white-space: nowrap;
   font-size: 0.8125rem;
 }
 
@@ -1031,27 +1055,40 @@ body {
 
 .tabela-executiva {
   table-layout: fixed;
-  min-width: 560px;
+  width: 100%;
+}
+
+.tabela-executiva th,
+.tabela-executiva td {
+  padding: 0.6rem 0.75rem;
 }
 
 .tabela-executiva th:nth-child(1),
 .tabela-executiva td:nth-child(1) {
-  width: 12%;
+  width: 20%;
 }
 
 .tabela-executiva th:nth-child(2),
 .tabela-executiva td:nth-child(2) {
-  width: 22%;
+  width: 24%;
 }
 
 .tabela-executiva th:nth-child(3),
 .tabela-executiva td:nth-child(3) {
   width: 14%;
+  padding-right: 1.5rem;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .tabela-executiva th:nth-child(4),
 .tabela-executiva td:nth-child(4) {
-  width: 16%;
+  width: 14%;
+}
+
+.tabela-executiva th:nth-child(5),
+.tabela-executiva td:nth-child(5) {
+  width: 28%;
 }
 
 .celula-truncada {
@@ -1174,12 +1211,6 @@ body {
   margin: 1.5rem auto 0;
 }
 
-@media (min-width: 1024px) {
-  .executivo-tabelas {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 @media (min-width: 1200px) {
   .executivo-kpis {
     grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -1192,7 +1223,7 @@ body {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .area-executivo {
     padding: 6rem 1rem 6rem;
   }
@@ -1202,7 +1233,69 @@ body {
   }
 
   .n4-linha {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) 170px;
+  }
+
+  .n4-nome {
+    grid-column: 1 / -1;
+  }
+
+  .tabela-executiva,
+  .tabela-executiva tbody {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .tabela-executiva thead {
+    display: none;
+  }
+
+  .tabela-executiva tr {
+    display: grid;
+    gap: 0.4rem;
+    min-width: 0;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+  }
+
+  .tabela-executiva td,
+  .tabela-executiva td:nth-child(n) {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    width: auto;
+    min-width: 0;
+    padding: 0.2rem 0;
+    border: 0;
+    text-align: right;
+  }
+
+  .tabela-executiva td:nth-child(n) {
+    padding-right: 0;
+  }
+
+  .tabela-executiva td.celula-truncada {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .tabela-executiva td::before {
+    content: attr(data-rotulo);
+    flex-shrink: 0;
+    font-size: var(--fs-label);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-subtle);
+    text-align: left;
+  }
+
+  .tabela-executiva td.celula-truncada {
+    max-width: 100%;
   }
 }
 
@@ -1271,10 +1364,6 @@ body {
 
   .tabela-rolagem {
     overflow: visible;
-  }
-
-  .tabela-executiva {
-    min-width: 0;
   }
 
   .ver-dados {

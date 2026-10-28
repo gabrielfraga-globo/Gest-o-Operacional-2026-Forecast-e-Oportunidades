@@ -9,13 +9,32 @@ export interface EntradaCascata {
   pressao: number;
 }
 
-const LARGURA = 560;
-const ALTURA_TOTAL = 260;
-const TOPO = 28;
-const ALTURA_PLOTAGEM = 180;
-const BASE = TOPO + ALTURA_PLOTAGEM;
-const COLUNA = LARGURA / 4;
-const BARRA = 68;
+interface Layout {
+  readonly largura: number;
+  readonly altura: number;
+  readonly topo: number;
+  readonly plotagem: number;
+  readonly barra: number;
+  readonly rotulos: readonly [string, string, string, string];
+}
+
+const LAYOUT_COMPLETO: Layout = {
+  largura: 560,
+  altura: 260,
+  topo: 28,
+  plotagem: 180,
+  barra: 68,
+  rotulos: ['ORC+BG', 'Realizado', 'Previsão futura', 'Saldo projetado'],
+};
+
+const LAYOUT_COMPACTO: Layout = {
+  largura: 360,
+  altura: 300,
+  topo: 36,
+  plotagem: 220,
+  barra: 56,
+  rotulos: ['ORC+BG', 'Real.', 'Previsão', 'Saldo'],
+};
 
 export function GraficoCascata({
   orcBg,
@@ -51,13 +70,6 @@ export function GraficoCascata({
     ...segmentos.flatMap((s) => [s.inicio, s.fim]),
   ]);
 
-  const yDe = (valor: number): number => BASE - posicaoNoEixo(valor, dominio, ALTURA_PLOTAGEM);
-  const yZero = yDe(0);
-
-  const colunas = passos.slice(0, 3);
-  const xColunaSaldo = COLUNA * 3 + COLUNA / 2;
-  const topoSaldo = Math.min(...segmentos.map((s) => Math.min(yDe(s.inicio), yDe(s.fim))));
-
   const resumo =
     `Cascata do forecast: ORC+BG ${formatarMilhoes(orcBg)}; ` +
     `Realizado ${formatarMilhoes(-realizado)}; ` +
@@ -65,19 +77,31 @@ export function GraficoCascata({
     `Saldo projetado ${formatarMilhoes(saldo)}, sendo Oportunidade ${formatarMilhoes(oportunidade)}, ` +
     `Pressão ${formatarMilhoes(pressao)} e Compromisso e a validar ${formatarMilhoes(residual)}.`;
 
-  return (
-    <figure className="grafico-figura">
+  // Duas variantes do mesmo desenho: a CSS alterna qual aparece (ver globals.css).
+  const desenhar = (layout: Layout, compacto: boolean) => {
+    const base = layout.topo + layout.plotagem;
+    const coluna = layout.largura / 4;
+    const yDe = (valor: number): number => base - posicaoNoEixo(valor, dominio, layout.plotagem);
+    const yZero = yDe(0);
+    const xSaldo = coluna * 3 + coluna / 2;
+    const semSegmentos = segmentos.every((s) => yDe(s.inicio) === yDe(s.fim));
+    const pontosSaldo = segmentos.flatMap((s) => [yDe(s.inicio), yDe(s.fim)]);
+    const topoSaldo = Math.min(...pontosSaldo);
+    const fundoSaldo = Math.max(...pontosSaldo);
+    const yRotuloSaldo = saldo < 0 ? fundoSaldo + 14 : topoSaldo - 6;
+
+    return (
       <svg
         role="img"
         aria-label={resumo}
-        viewBox={`0 0 ${LARGURA} ${ALTURA_TOTAL}`}
+        viewBox={`0 0 ${layout.largura} ${layout.altura}`}
         width="100%"
-        className="grafico-svg"
+        className={`grafico-svg ${compacto ? 'grafico-cascata-compacto' : 'grafico-cascata-completo'}`}
       >
-        <line x1={0} x2={LARGURA} y1={yZero} y2={yZero} className="grafico-eixo" />
+        <line x1={0} x2={layout.largura} y1={yZero} y2={yZero} className="grafico-eixo" />
 
-        {colunas.map((p, i) => {
-          const cx = COLUNA * i + COLUNA / 2;
+        {passos.slice(0, 3).map((p, i) => {
+          const cx = coluna * i + coluna / 2;
           const ya = yDe(p.inicio);
           const yb = yDe(p.fim);
           const topo = Math.min(ya, yb);
@@ -86,17 +110,17 @@ export function GraficoCascata({
           return (
             <g key={p.rotulo}>
               <rect
-                x={cx - BARRA / 2}
+                x={cx - layout.barra / 2}
                 y={topo}
-                width={BARRA}
+                width={layout.barra}
                 height={altura}
                 className={p.tipo === 'total' ? 'barra-total' : 'barra-reducao'}
               />
               <text x={cx} y={topo - 6} textAnchor="middle" className="grafico-rotulo-valor">
                 {formatarMilhoes(valor)}
               </text>
-              <text x={cx} y={ALTURA_TOTAL - 6} textAnchor="middle" className="grafico-rotulo-eixo">
-                {p.rotulo}
+              <text x={cx} y={layout.altura - 6} textAnchor="middle" className="grafico-rotulo-eixo">
+                {layout.rotulos[i]}
               </text>
             </g>
           );
@@ -107,29 +131,40 @@ export function GraficoCascata({
           const yb = yDe(s.fim);
           const altura = Math.abs(yb - ya);
           if (altura === 0) return null;
-          const meio = (ya + yb) / 2;
           return (
-            <g key={s.rotulo}>
-              <rect
-                x={xColunaSaldo - BARRA / 2}
-                y={Math.min(ya, yb)}
-                width={BARRA}
-                height={altura}
-                fill={s.cor}
-              />
-              <text x={xColunaSaldo + BARRA / 2 + 6} y={meio + 4} className="grafico-rotulo-segmento">
-                {formatarMilhoes(s.valor)}
-              </text>
-            </g>
+            <rect
+              key={s.rotulo}
+              x={xSaldo - layout.barra / 2}
+              y={Math.min(ya, yb)}
+              width={layout.barra}
+              height={altura}
+              style={{ fill: s.cor }}
+            />
           );
         })}
-        <text x={xColunaSaldo} y={topoSaldo - 6} textAnchor="middle" className="grafico-rotulo-valor">
+        {semSegmentos && (
+          <rect
+            x={xSaldo - layout.barra / 2}
+            y={yZero - 1}
+            width={layout.barra}
+            height={2}
+            className="barra-total"
+          />
+        )}
+        <text x={xSaldo} y={yRotuloSaldo} textAnchor="middle" className="grafico-rotulo-valor">
           {formatarMilhoes(saldo)}
         </text>
-        <text x={xColunaSaldo} y={ALTURA_TOTAL - 6} textAnchor="middle" className="grafico-rotulo-eixo">
-          Saldo projetado
+        <text x={xSaldo} y={layout.altura - 6} textAnchor="middle" className="grafico-rotulo-eixo">
+          {layout.rotulos[3]}
         </text>
       </svg>
+    );
+  };
+
+  return (
+    <figure className="grafico-figura">
+      {desenhar(LAYOUT_COMPLETO, false)}
+      {desenhar(LAYOUT_COMPACTO, true)}
 
       <ul className="grafico-legenda">
         {segmentos.map((s) => (

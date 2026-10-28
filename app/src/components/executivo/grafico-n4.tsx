@@ -28,7 +28,9 @@ export function GraficoPorN4({ linhas }: { linhas: ResumoN4[] }) {
             const zero = intervaloBarra(0, 0, dominio, LARGURA_BARRA).x;
             return (
               <li key={l.n4} className="n4-linha">
-                <span className="n4-nome">{l.n4}</span>
+                <span className="n4-nome" title={l.n4}>
+                  {l.n4}
+                </span>
                 <svg
                   viewBox={`0 0 ${LARGURA_BARRA} ${ALTURA_BARRA}`}
                   width="100%"
@@ -43,14 +45,14 @@ export function GraficoPorN4({ linhas }: { linhas: ResumoN4[] }) {
                     y={2}
                     width={positiva.largura}
                     height={ALTURA_BARRA - 4}
-                    fill="var(--cat-capex)"
+                    style={{ fill: 'var(--cat-capex)' }}
                   />
                   <rect
                     x={pressao.x}
                     y={2}
                     width={pressao.largura}
                     height={ALTURA_BARRA - 4}
-                    fill="var(--pressao)"
+                    style={{ fill: 'var(--pressao)' }}
                   />
                 </svg>
                 <span className="n4-valores num">
