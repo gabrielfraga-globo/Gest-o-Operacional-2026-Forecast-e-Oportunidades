@@ -58,14 +58,15 @@ Os prompts usam as recomendações do arquiteto. Se você discordar de alguma, m
 
 | ID | Decisão adotada | Afeta |
 |---|---|---|
-| D1 | "Real sem orçamento" = linha N4 × Projeto com ORC+BG = 0 e realizado ≠ 0, agrupada em `INDIRETO — REAL SEM ORÇAMENTO` por N4. Controle passa a ser **R$ 935.757,08** (125 linhas), não 504.391 | T6 |
+| D1 | "Real sem orçamento" = linha N4 × Projeto com ORC+BG = 0 e realizado ≠ 0, agrupada em `INDIRETO — REAL SEM ORÇAMENTO` por N4. Controle passa a ser **R$ 918.842,40** (123 linhas), não 504.391 — calculado com a identidade de projeto D8 | T6 |
 | D3 | Fonte do orçamento e do realizado = aba `Base` da planilha *Oportunidades Opex 2026* | T2 |
 | D4 | `Valor` nulo vira 0 com aviso (WARN); linha sem `Nome da Origem` é mantida com aviso | T3 |
 | D7 | Linha **sem previsão preenchida**: assume-se que o saldo positivo será realizado (forecast = ORC+BG), categoria `A_VALIDAR`. Conservador: nada vira oportunidade sem justificativa | T6 |
 | — | Cada carga **substitui** os lançamentos (refresh completo); previsões em `forecast_input` nunca são apagadas | T7 |
 | — | Responsável por linha fica vazio na Fase 1; será preenchido no app (Fase 2) | T5 |
+| D8 | **Identidade do projeto = código antes do primeiro " - "** (ex.: `C.EST.000708-01-2-999`). Na base real, 2 projetos aparecem com textos diferentes no orçamento e no realizado; agrupar pelo texto completo criaria falso "real sem orçamento". Nome curto até 40 caracteres | Pacote A |
 
-Números de controle (centavos, após arredondar cada lançamento): ORC+BG **68.623.868,85** · Realizado **54.790.770,92** · Saldo **13.833.097,93** · Real sem orçamento **935.757,08**.
+Números de controle (centavos, após arredondar cada lançamento): ORC+BG **68.623.868,85** · Realizado **54.790.770,92** · Saldo **13.833.097,93** · Real sem orçamento **918.842,40**.
 
 ---
 
@@ -325,7 +326,7 @@ Leia .github/copilot-instructions.md, domain.py, ingest.py, validate.py, normali
      orc_bg: 68623868.85
      realizado: 54790770.92
      saldo: 13833097.93
-     real_sem_orcamento: 935757.08
+     real_sem_orcamento: 918842.40
 2. Crie etl/src/opex_etl/reconcile.py:
    - @dataclass(frozen=True) class ResultadoControle: nome: str; esperado: Decimal; obtido: Decimal; diferenca: Decimal; ok: bool.
    - def ler_controles(caminho: Path) -> tuple[Decimal, dict[str, Decimal]].
