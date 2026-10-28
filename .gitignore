@@ -1,0 +1,30 @@
+# Dados de negócio: nunca versionar (contêm valores contratuais e e-mails de aprovadores)
+data/
+out/
+*.xlsx
+*.xlsm
+*.xls
+*.csv
+!tests/fixtures/**/*.csv
+!config/**/*.csv
+!inputs/**/*.template.csv
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Editor / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+~$*
