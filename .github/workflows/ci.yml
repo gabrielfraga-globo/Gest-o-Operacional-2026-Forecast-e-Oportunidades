@@ -72,6 +72,8 @@ jobs:
           --health-retries 10
 
     env:
+      BETTER_AUTH_SECRET: ci-segredo-ficticio-com-mais-de-32-caracteres
+      BETTER_AUTH_URL: http://localhost:3000
       DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5432/opex_test?sslmode=disable
 
     steps:

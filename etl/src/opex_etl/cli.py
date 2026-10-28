@@ -1,4 +1,4 @@
-"""Linha de comando: opex-etl gerar-aliases | validar | carregar | status."""
+"""Linha de comando: opex-etl gerar-aliases | validar | carregar | usuarios | status."""
 
 import argparse
 import os
@@ -20,6 +20,7 @@ from opex_etl.normalize import (
     sugerir_aliases,
 )
 from opex_etl.reconcile import ResultadoControle, ler_controles, reconciliar
+from opex_etl.usuarios import carregar_usuarios
 from opex_etl.validate import (
     Problema,
     aplicar_correcoes,
@@ -176,6 +177,13 @@ def _carregar(planilha: Path, aliases: Path, controles: Path) -> int:
     return 0
 
 
+def _usuarios(arquivo: Path) -> int:
+    with psycopg.connect(_url_banco()) as conn:
+        resultado = carregar_usuarios(conn, arquivo)
+    print(f"{resultado.usuarios} usuários, {resultado.acessos} acessos")
+    return 0
+
+
 def _status() -> int:
     with psycopg.connect(_url_banco()) as conn:
         execucoes = conn.execute(
@@ -224,6 +232,11 @@ def _montar_parser() -> argparse.ArgumentParser:
     carregar_p.add_argument("--aliases", type=Path, default=ALIASES_PADRAO)
     carregar_p.add_argument("--controles", type=Path, default=CONTROLES_PADRAO)
 
+    usuarios_p = comandos.add_parser(
+        "usuarios", help="Carrega a lista de acesso (usuários e permissões)."
+    )
+    usuarios_p.add_argument("arquivo", type=Path)
+
     comandos.add_parser("status", help="Mostra as últimas cargas e a reconciliação.")
     return parser
 
@@ -239,6 +252,8 @@ def main(argv: list[str] | None = None) -> int:
             return _carregar(
                 _resolver(args.planilha), _resolver(args.aliases), _resolver(args.controles)
             )
+        if args.comando == "usuarios":
+            return _usuarios(_resolver(args.arquivo))
         return _status()
     except (ErroIngestao, AliasFaltanteError, FileNotFoundError, ValueError) as erro:
         print(f"Erro: {erro}", file=sys.stderr)

@@ -21,8 +21,10 @@ Microsoft Entra ID dependeria da TI; senha compartilhada não identifica pessoas
 4. **Lista de acesso fechada:** o link só é enviado a e-mails cadastrados na tabela `usuario`.
    Pedido de e-mail fora da lista recebe a mesma mensagem genérica ("se o e-mail estiver autorizado,
    você receberá um link"), para não revelar quem tem acesso.
-5. **Papéis:** `admin` (vê e edita tudo) e `responsavel` (vê tudo; edita só os N4 atribuídos em
-   `usuario_n4`). Atribuição **por N4**, uma ou mais pessoas por N4 (premissa — ver P1).
+5. **Papéis:** `admin` (vê e edita tudo) e `responsavel` (vê tudo; edita só o que lhe foi atribuído em
+   `usuario_acesso`). A atribuição pode ser **por N4 inteiro** (`projeto_id` nulo) **ou por projeto
+   específico dentro de um N4** (`projeto_id` preenchido). A permissão efetiva por linha de forecast está
+   na view `vw_permissao_linha`. Um mesmo N4 pode ter várias pessoas.
 6. **Autorização no servidor:** toda gravação confere sessão + papel + N4 no servidor. Esconder botões
    na tela não é controle de acesso.
 7. **Todas as rotas exigem sessão**, exceto a tela de login e o callback do link.
@@ -49,5 +51,5 @@ Microsoft Entra ID dependeria da TI; senha compartilhada não identifica pessoas
 
 ## Pendências
 
-- **P1:** confirmar que a atribuição de edição é **por N4** (premissa adotada). Se precisar ser por
-  projeto, a tabela `usuario_n4` vira `usuario_linha`, sem impacto no restante.
+- **P1 (resolvida):** a atribuição de edição pode ser por N4 inteiro ou por projeto dentro do N4, via
+  `usuario_acesso` (migration `20261028000006_usuarios.sql`). Substitui a premissa original "por N4 apenas".

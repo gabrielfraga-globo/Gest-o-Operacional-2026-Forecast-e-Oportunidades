@@ -3,7 +3,7 @@ import { Pool } from 'pg';
 
 let pool: Pool | null = null;
 
-function obterPool(): Pool {
+export function obterPool(): Pool {
   if (pool) {
     return pool;
   }

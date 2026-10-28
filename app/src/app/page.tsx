@@ -1,9 +1,11 @@
 import { getReconciliacao } from "@/server/reconciliacao";
 import { formatarMilhoes, formatarPercentual } from "@/lib/formato";
+import { exigirSessao } from "@/server/sessao";
 
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
+  await exigirSessao();
   const r = await getReconciliacao();
   const linhas = r.linhasRealSemOrcamento;
 
