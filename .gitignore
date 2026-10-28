@@ -28,3 +28,8 @@ build/
 .DS_Store
 Thumbs.db
 ~$*
+
+# Credenciais e variáveis de ambiente (nunca versionar)
+.env
+.env.*
+!.env.example
