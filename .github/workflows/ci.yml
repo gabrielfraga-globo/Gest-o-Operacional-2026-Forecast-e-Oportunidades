@@ -38,7 +38,13 @@ jobs:
           sudo chmod +x /usr/local/bin/dbmate
 
       - name: Aplicar migrations
-        run: dbmate --url $DATABASE_URL_TEST --migrations-dir db/migrations --no-dump-schema up
+        # dbmate falha quando não há migrations; só roda se existir algum .sql
+        run: |
+          if ls db/migrations/*.sql >/dev/null 2>&1; then
+            dbmate --url "$DATABASE_URL_TEST" --migrations-dir db/migrations --no-dump-schema up
+          else
+            echo "Nenhuma migration ainda; passo ignorado."
+          fi
 
       - name: Instalar dependências
         working-directory: etl
