@@ -410,7 +410,12 @@ Depois rode cd etl; uv run poe check e mostre a saída.
 
 ## 8. Status
 
-| Tarefa | Status | Revisão |
+| Pacote | Tarefas | Status |
 |---|---|---|
-| T0 | em andamento | — |
-| T1–T8 | aguardando | — |
+| — | T0 Esqueleto, T1 Domínio, T2 Ingestão | ✅ PRs #1–#3 |
+| A | T3 Qualidade + T4 Nomes curtos (D8) | ✅ PR #4 |
+| B | T5 Schema + T6 Views | ✅ PR #5 (17 testes de integração em Postgres 16) |
+| C | T7 Carga + T8 CLI | ✅ PR #6 |
+| Carga real | Neon `forecast-opex-2026` (sa-east-1), import_run 1 em 28/10/2026 | ✅ 4 controles ok, 171 linhas de coleta |
+
+**Fase 1 concluída.** Próximo: Fase 2 (coleta) — decisão D6 (login) pendente.
