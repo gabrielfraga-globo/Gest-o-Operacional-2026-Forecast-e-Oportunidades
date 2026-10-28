@@ -22,11 +22,9 @@ export function formatarReais(valor: number): string {
 
 export function formatarReaisInteiro(valor: number): string {
   const absoluto = arredondarMeioParaCima(valor, 0);
-  const texto = absoluto.toLocaleString(LOCALE, {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  });
-  return `${sinal(valor)}R$ ${texto}`;
+  const texto = absoluto.toLocaleString(LOCALE, { maximumFractionDigits: 0 });
+  const negativo = valor < 0 && absoluto !== 0;
+  return `${negativo ? '-' : ''}R$ ${texto}`;
 }
 
 export function formatarMilhoes(valor: number): string {

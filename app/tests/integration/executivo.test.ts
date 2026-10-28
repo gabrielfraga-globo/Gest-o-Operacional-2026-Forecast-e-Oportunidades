@@ -185,7 +185,7 @@ describe.skipIf(!deveRodar)('executivo (integração)', () => {
         (select realizado from vw_reconciliacao) as realizado,
         (select sum(forecast_fechamento) from vw_forecast) as forecast,
         (select sum(oportunidade_ajustada) from vw_forecast where categoria = 'OPORTUNIDADE') as oportunidade,
-        (select sum(saldo_atual) from vw_forecast where categoria = 'PRESSAO') as pressoes,
+        (select sum(oportunidade_ajustada) from vw_forecast where categoria = 'PRESSAO') as pressoes,
         (select count(*) from vw_forecast) as linhas,
         (select count(*) from vw_forecast where input_completo) as com_input
     `);

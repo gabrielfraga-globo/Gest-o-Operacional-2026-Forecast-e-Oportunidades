@@ -97,7 +97,7 @@ export async function obterResumoGeral(): Promise<ResumoGeral> {
         count(*) filter (where input_completo) as linhas_com_input,
         coalesce(sum(forecast_fechamento), 0) as forecast_fechamento,
         coalesce(sum(oportunidade_ajustada) filter (where categoria = 'OPORTUNIDADE'), 0) as oportunidade_ajustada,
-        coalesce(sum(saldo_atual) filter (where categoria = 'PRESSAO'), 0) as pressoes
+        coalesce(sum(oportunidade_ajustada) filter (where categoria = 'PRESSAO'), 0) as pressoes
       from vw_forecast
     `),
   ]);

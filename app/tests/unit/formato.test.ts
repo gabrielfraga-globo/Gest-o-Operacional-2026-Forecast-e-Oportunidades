@@ -39,6 +39,29 @@ describe('formatarReais', () => {
   });
 });
 
+describe('formatarReaisInteiro', () => {
+  it('formata valores positivos sem centavos, com separador de milhar', () => {
+    expect(formatarReaisInteiro(1157864.4)).toBe('R$ 1.157.864');
+  });
+
+  it('arredonda meio para cima', () => {
+    expect(formatarReaisInteiro(1234.5)).toBe('R$ 1.235');
+    expect(formatarReaisInteiro(1234.49)).toBe('R$ 1.234');
+  });
+
+  it('formata negativos com sinal de menos', () => {
+    expect(formatarReaisInteiro(-1234.5)).toBe('-R$ 1.235');
+  });
+
+  it('não mostra sinal de menos para valor que arredonda para zero', () => {
+    expect(formatarReaisInteiro(-0.2)).toBe('R$ 0');
+  });
+
+  it('formata zero', () => {
+    expect(formatarReaisInteiro(0)).toBe('R$ 0');
+  });
+});
+
 describe('formatarMilhoes', () => {
   it('formata valores positivos em milhões com uma casa', () => {
     expect(formatarMilhoes(68623868.85)).toBe('R$ 68,6 mi');

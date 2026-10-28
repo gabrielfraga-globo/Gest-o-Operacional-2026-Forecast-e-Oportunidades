@@ -217,7 +217,7 @@ export default async function PaginaExecutivo() {
           vazio="Nenhuma linha classificada como pressão."
           linhas={pressoes}
           colunaValor="Saldo"
-          valorDe={(l) => l.saldoAtual}
+          valorDe={(l) => l.oportunidadeAjustada}
         />
       </section>
     </div>
