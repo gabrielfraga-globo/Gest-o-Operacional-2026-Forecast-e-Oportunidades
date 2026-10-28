@@ -1,0 +1,51 @@
+[project]
+name = "opex-etl"
+version = "0.1.0"
+description = "ETL do forecast Opex 2026 (Plataformas de Produção)"
+requires-python = ">=3.12"
+dependencies = [
+    "pandas",
+    "openpyxl",
+    "pandera",
+    "psycopg[binary]>=3.2",
+    "pyyaml",
+    "python-dotenv",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "ruff",
+    "mypy",
+    "pandas-stubs",
+    "types-PyYAML",
+    "poethepoet",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.mypy]
+strict = true
+packages = ["opex_etl"]
+mypy_path = "src"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["integration: precisa de Postgres em DATABASE_URL_TEST"]
+
+[tool.poe.tasks]
+lint = { sequence = [{ cmd = "ruff check ." }, { cmd = "ruff format --check ." }] }
+typecheck = "mypy src"
+test = "pytest -q --cov=opex_etl --cov-report=term-missing"
+check = { sequence = [{ ref = "lint" }, { ref = "typecheck" }, { ref = "test" }] }
+fmt = "ruff format ."
+migrate = "dbmate --migrations-dir ../db/migrations up"
