@@ -1,8 +1,8 @@
 # Forecast & Oportunidades Opex 2026 — Plataformas de Produção
-## Revisão arquitetural (v0.1 — 27/10/2026)
+## Revisão arquitetural (v0.3 — 27/10/2026)
 
 Papel: Claude = arquiteto/revisor · GitHub Copilot = implementador.
-Status: **v0.2 — canal de entrada decidido (ADR-003: SharePoint + Power Apps + Python local). Aguardando D1, D3, D4 e a validação S0 antes de autorizar T0.**
+Status: **v0.3 — ADR-004 aceito (Neon + Vercel). Fase 1 (interpretar, limpar, carregar) em andamento: T0 liberada; D1, D3, D4 bloqueiam T2, T3 e T7.**
 
 ---
 
@@ -80,200 +80,203 @@ Saldo por N4: Pós-Prod. e Design 6,29 mi · Metadados e Mídias 1,88 mi · Pré
 
 ---
 
-## 3. TARGET ARCHITECTURE
+## 3. TARGET ARCHITECTURE (v0.3 — ADR-004)
 
 ### 3.1 Princípios
-- **Fonte imutável:** as planilhas exportadas entram como estão (raw), nunca são editadas.
-- **Cálculo determinístico em código**, inputs humanos em arquivos separados e versionados.
-- **Toda linha agregada aponta para as linhas de origem** (lineage por `row_key`).
-- **Reconciliação como quality gate:** o pipeline falha se os totais não batem.
-- Incremental: começa como CLI Python local; nada de servidor/DB até haver necessidade.
+- **Duas fontes, papéis distintos, sem sobreposição:**
+  - a planilha (formulário de acompanhamento) é a fonte do **orçamento e do realizado** — importada, nunca editada pelo sistema;
+  - o **Neon é o sistema de registro do futuro** (previsões, justificativas, responsáveis) — nenhuma planilha guarda forecast.
+- **Importação idempotente e auditável:** cada carga é um `import_run` com hash do arquivo; recarregar o mesmo arquivo não duplica nada.
+- **Regras de negócio em um só lugar: views SQL no Postgres.** ETL (Python) e app (TypeScript) apenas leem as views; nenhuma das duas linguagens recalcula saldo, forecast ou categoria.
+- **Rastreabilidade:** toda linha agregada chega às linhas da base original por `row_key`.
+- **Reconciliação é quality gate:** a carga só é marcada `ok` se os totais baterem com os controles.
+- **Nenhuma rota pública sem login** quando o app existir (Fase 2).
 
-### 3.2 Componentes
+### 3.2 Fases
 
-```
-data/raw/*.xlsx  (imutável, hash registrado)
-      │
-  [1] ingest      → lê aba Base, normaliza tipos, gera row_key, registra hash/linhas
-      │
-  [2] validate    → schema + regras de qualidade (G7, G8, G9) → relatório de DQ
-      │
-  [3] dims        → dicionário de nomes curtos (config/project_aliases.csv)
-      │
-  [4] consolidate → fato anual por (N4, projeto_curto) com ORC+BG, REAL, saldo;
-      │              regra "INDIRETO — REAL SEM ORÇAMENTO"
-      │
-  [5] forecast    → junta inputs/forecast_inputs.csv (previsão futura por linha,
-      │              classificação, justificativa, responsável, confiança, próxima ação)
-      │
-  [6] classify    → OPORTUNIDADE / COMPROMISSO / PRESSÃO / A VALIDAR
-      │
-  [7] reconcile   → compara com controles; falha se divergir
-      │
-  [8] publish     → snapshot datado (parquet + xlsx) + one-pager executivo (HTML)
-```
-
-### 3.3 Contratos de dados (resumo)
-
-**`fact_line`** (saída de ingest) — `row_key` (hash estável de origem+índice+colunas-chave+mês+valor), `cen2`, `cenario`, `n4`, `n5`, `cc`, `projeto`, `finalidade`, `fornecedor`, `conta`, `grupo`, `mes` (1–12), `valor` (Decimal), `oc_rc`, `dt_contab`, `lancamento`.
-
-**`project_alias`** (config, mantido por humano) — `projeto` (código completo) → `projeto_curto` (≤ 30 caracteres), único.
-
-**`forecast_input`** (input humano, versionado) — chave `(n4, projeto_curto)`; campos obrigatórios: `previsao_futura`, `classificacao` ∈ {COMPROMISSO, POSTERGACAO, CANCELAMENTO, ECONOMIA, A_VALIDAR}, `justificativa`, `responsavel`, `confianca` ∈ {ALTA, MEDIA, BAIXA}, `proxima_acao`, `data_atualizacao`.
-
-**`fact_forecast`** (saída) — por `(n4, projeto_curto)`:
-```
-orc_bg, realizado, saldo_atual = orc_bg − realizado
-previsao_futura (input; default = 0 e status A_VALIDAR)
-forecast_fechamento = realizado + previsao_futura
-oportunidade_ajustada = orc_bg − forecast_fechamento
-categoria:
-  oportunidade_ajustada > 0 e input validado  → OPORTUNIDADE
-  oportunidade_ajustada > 0 e sem input        → A VALIDAR
-  oportunidade_ajustada ≈ 0                    → COMPROMISSO (saldo será realizado)
-  oportunidade_ajustada < 0                    → PRESSÃO
-source_row_keys: lista de row_key que compõem a linha
-```
-
-### 3.4 Regras de negócio a fixar (ver decisões)
-- **R1 — Real sem orçamento:** linha (no grão definido em D1) com `orc_bg == 0` e `realizado ≠ 0` é reagrupada em `INDIRETO — REAL SEM ORÇAMENTO` dentro do seu N4, mantendo `source_row_keys`.
-- **R2 — Saldo bruto vs líquido:** a visão executiva mostra **bruto positivo, pressões e líquido** separadamente (corrige G2).
-- **R3 — Forecast anual, não mensal:** previsão futura é informada como valor total Nov–Dez (+ resto de Out), não derivada do faseamento do orçamento (corrige G3).
-- **R4 — Sem input = A VALIDAR:** nenhum saldo vira oportunidade sem justificativa, responsável e confiança.
-
-### 3.5 Estratégia de erros
-- Erros de schema/carga → abortam (exit ≠ 0) com mensagem apontando aba/coluna/linha.
-- Regras de qualidade → classificadas `ERROR` (aborta) ou `WARN` (segue e aparece no relatório). Ex.: valor nulo = WARN com contagem; linha sem origem = ERROR até decisão D4.
-- Reconciliação divergente > R$ 1 → ERROR.
-- Input humano com chave inexistente ou campo obrigatório vazio → ERROR listando as linhas.
-
-### 3.6 Observabilidade
-- `run_manifest.json` por execução: hash dos arquivos de entrada, contagem de linhas por etapa, totais por etapa, warnings, versão do código, timestamp.
-- Relatório de qualidade `dq_report.md` versionado junto do snapshot.
-
-### 3.7 Segurança
-- Dados contêm e-mails de aprovadores e valores contratuais: `data/` fora do Git (`.gitignore`), apenas fixtures sintéticas no repositório.
-- One-pager não exibe e-mails, só nomes de responsável informados no input.
-
-### 3.8 Testes
-- **Unitários** por etapa com fixtures sintéticas pequenas (casos: estouro, real sem orçamento, valor nulo, duplicata, estorno).
-- **Teste de reconciliação** (golden) contra os 4 controles reproduzíveis + o de D1 quando definido.
-- **Testes de propriedade:** `soma(fact_forecast.orc_bg) == soma(fact_line ORC)`; idem REAL; `forecast_fechamento == realizado + previsao` linha a linha.
-- **Lineage:** toda `row_key` da entrada aparece em exatamente uma linha agregada.
-
-### 3.9 Stack proposta
-Python 3.12 · pandas (ou DuckDB se volume crescer) · pandera para schema · pytest + coverage · ruff + mypy (strict nos módulos de domínio) · openpyxl para leitura/escrita · Jinja2 para o one-pager HTML · GitHub Actions rodando lint/type/test.
-
-Layout:
-```
-forecast-opex-2026/
-  src/opex/{ingest,validate,dims,consolidate,forecast,classify,reconcile,publish}.py
-  src/opex/domain.py        # tipos, enums, contratos
-  config/project_aliases.csv
-  config/controls.yaml      # números de controle por rodada
-  inputs/forecast_inputs.csv
-  tests/{unit,integration}/ , tests/fixtures/
-  docs/adr/ , docs/ARCHITECTURE.md
-  .github/copilot-instructions.md
-```
-
----
-
-## 4. DECISÕES NECESSÁRIAS (bloqueiam T1)
-
-| ID | Pergunta | Recomendação |
+| Fase | Entrega | Quem |
 |---|---|---|
-| D1 | Qual é o grão e a regra que geram R$ 504.391 de "real sem orçamento"? | Se não houver regra documentada, adotar **N4 + Projeto** (R$ 935.757) e atualizar o controle |
-| D2 | Existe repositório de código em algum lugar, ou começamos do zero? | ✅ **Resolvido:** repositório novo `Gest-o-Operacional-2026-Forecast-e-Oportunidades` (deve ficar privado) |
-| D3 | Qual é a fonte da verdade do orçamento: `Base` (Acompanhamento_PLAT_CORE) ou `Orçamento…xlsx`? | `Base` — é a que reconcilia com os controles; o outro arquivo vira referência de CC futuro |
-| D4 | As 2 linhas ORC sem origem (−R$ 373 mil, Dez/Outsourcing) e as 18 com valor nulo são válidas? | Manter as 2 linhas (afetam o controle) mas marcar WARN; nulos = 0 com WARN |
-| D5 | Onde o forecast futuro será preenchido pelos responsáveis? | ✅ **Resolvido (ADR-003):** Power Apps sobre Lista do SharePoint; base em Excel no SharePoint; pipeline Python no notebook do Gabriel lendo exportação CSV |
+| **1. Interpretar, limpar e carregar** | ETL Python local → Neon, com modelo, views, reconciliação e relatório de qualidade | Copilot implementa, Claude revisa |
+| 2. Coleta | App Next.js na Vercel, login obrigatório, edição do futuro por projeto gravando no Neon | Copilot implementa, Claude revisa |
+| 3. Visual final | Tela executiva de uma página lendo as views | Copilot implementa, Claude revisa |
+
+### 3.3 Componentes (Fase 1)
+
+```
+data/raw/*.xlsx (local, fora do Git)
+   │
+   ▼
+etl/  (Python, roda no notebook)
+ [1] ingest       lê aba Base → DataFrame tipado + row_key + hash do arquivo
+ [2] validate     schema + regras de qualidade (ERROR/WARN) → dq_report.md
+ [3] normalize    nomes curtos (config/project_aliases.csv), meses → int, sinais
+ [4] load         abre import_run, carrega staging, faz upsert em fato_lancamento,
+                  atualiza dimensões e forecast_linha — tudo numa transação
+ [5] reconcile    compara vw_reconciliacao com config/controls.yaml → status do import_run
+   │
+   ▼
+Neon Postgres  (branch dev para testes, branch main para produção)
+ db/migrations/*.sql  (dbmate)
+ tabelas + views de regra de negócio
+```
+
+### 3.4 Modelo de dados (Postgres)
+
+**Tabelas**
+
+| Tabela | Grão / chave | Conteúdo |
+|---|---|---|
+| `import_run` | `id` | arquivo, sha256, carregado_em, linhas_lidas, linhas_validas, totais, status (`loading`/`ok`/`failed`), relatório DQ |
+| `dim_n4` | `n4_id` | nome original, nome curto |
+| `dim_projeto` | `projeto_id` | código completo, nome curto (≤ 30 caracteres) |
+| `fato_lancamento` | `row_key` | cen2, cenário, n4_id, n5, cc, projeto_id, finalidade, fornecedor, conta, grupo, mês, valor (`numeric(18,2)`), oc_rc, dt_contab, lançamento, `import_run_id` |
+| `forecast_linha` | `linha_id`; único (n4_id, projeto_id) | unidade de coleta; responsável; ativo |
+| `forecast_input` | `linha_id` | previsao_futura, classificacao, justificativa, confianca, proxima_acao, atualizado_por, atualizado_em, `versao` (controle otimista) |
+| `forecast_input_hist` | `id` | cópia de cada versão anterior (trigger), para auditoria |
+
+**Enums**: `cen2` (ORC_BG, REAL) · `classificacao` (COMPROMISSO, POSTERGACAO, CANCELAMENTO, ECONOMIA, A_VALIDAR) · `confianca` (ALTA, MEDIA, BAIXA) · `categoria` (OPORTUNIDADE, COMPROMISSO, PRESSAO, A_VALIDAR).
+
+**Views (regras de negócio)**
+
+| View | Regra |
+|---|---|
+| `vw_saldo_linha` | por (n4, projeto): orc_bg, realizado, saldo_atual = orc_bg − realizado, `source_count` |
+| `vw_saldo_reagrupado` | aplica a regra "INDIRETO — REAL SEM ORÇAMENTO" (grão definido em D1) |
+| `vw_forecast` | junta `forecast_input`: forecast_fechamento = realizado + previsao_futura; oportunidade_ajustada = orc_bg − forecast_fechamento; categoria (ver 3.5) |
+| `vw_resumo_n4` | totais por N4: bruto positivo, pressões, líquido, forecast, oportunidade ajustada, % com input |
+| `vw_reconciliacao` | totais do último `import_run` para comparar com os controles |
+
+### 3.5 Regras de negócio
+- **R1 — Real sem orçamento:** linha com orc_bg = 0 e realizado ≠ 0 é reagrupada em `INDIRETO — REAL SEM ORÇAMENTO` dentro do seu N4, mantendo rastreabilidade (grão depende de D1).
+- **R2 — Saldo bruto vs líquido:** a visão mostra bruto positivo, pressões e líquido separados.
+- **R3 — Forecast anual:** previsão futura é um valor total até dezembro por linha; o faseamento mensal do orçamento não é usado (contém revisões lançadas fora do mês).
+- **R4 — Categoria:**
+  - sem input ou `classificacao = A_VALIDAR` → `A_VALIDAR`;
+  - oportunidade_ajustada < −1 → `PRESSAO`;
+  - |oportunidade_ajustada| ≤ 1 → `COMPROMISSO`;
+  - oportunidade_ajustada > 1 e input completo → `OPORTUNIDADE`.
+- **R5 — Input completo** = previsao_futura ≥ 0, justificativa, responsável, confiança e próxima ação preenchidos.
+
+### 3.6 Estratégia de erros
+- Erro de schema/carga → transação desfeita, `import_run.status = failed`, exit ≠ 0 com aba/coluna/linha.
+- Regras de qualidade → `ERROR` aborta; `WARN` segue e entra no relatório.
+- Reconciliação divergente > R$ 1 → `failed`.
+- Recarga do mesmo arquivo (mesmo sha256) → nada muda; mensagem "já carregado".
+
+### 3.7 Observabilidade
+- `import_run` é o log de cargas (consultável).
+- `dq_report.md` por carga em `out/`.
+- Logs estruturados (JSON) do ETL com etapa, contagens e totais.
+
+### 3.8 Segurança (condições do ADR-004)
+- Repositório **privado**.
+- Projeto Neon dedicado; `DATABASE_URL` só em `.env` local (fora do Git) e nas variáveis da Vercel; usuário de aplicação com permissões mínimas (sem DDL) separado do usuário de migração.
+- E-mails de aprovadores **não** são carregados: o responsável é identificado por nome em `config/responsaveis.csv`.
+- Fase 2 só vai ao ar com login obrigatório em todas as rotas.
+- Validação com a área de segurança/compliance sobre hospedar valores contratuais em Neon/Vercel registrada como risco aceito pelo dono do produto.
+
+### 3.9 Testes
+- **Unitários (Python):** ingest, validate, normalize com fixtures sintéticas.
+- **Integração (Postgres real):** migrations + carga de fixture + asserts nas views (CI com serviço `postgres:16`; local com Docker ou branch dev do Neon).
+- **Propriedades:** soma de `vw_saldo_linha` = soma de `fato_lancamento` por cen2; cada `row_key` em exatamente uma linha; recarga idempotente.
+- **Golden:** reconciliação com os controles (ORC+BG 68.623.870; Real 54.790.771; Saldo 13.833.099; Real sem orçamento conforme D1).
+
+### 3.10 Stack e layout
+Python 3.12 (uv) · pandas · pandera · psycopg 3 · pytest · ruff · mypy · dbmate (migrations SQL) · Postgres 16 (Neon) · Fase 2: Next.js + TypeScript na Vercel.
+
+```
+/
+├── db/migrations/            # SQL (dbmate) — tabelas, enums, views
+├── etl/
+│   ├── pyproject.toml
+│   ├── src/opex_etl/{domain,ingest,validate,normalize,load,reconcile,cli}.py
+│   └── tests/{unit,integration,fixtures}/
+├── config/{project_aliases.csv,responsaveis.csv,controls.yaml}
+├── app/                      # Fase 2
+├── docs/{ARCHITECTURE.md,adr/}
+├── .github/{workflows/ci.yml,copilot-instructions.md}
+├── .env.example
+└── data/ out/                # ignorados pelo Git
+```
 
 ---
 
-## 5. IMPLEMENTATION PLAN
+## 4. DECISÕES
 
-Ordem: S0 → T0 → T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9 → T10 → T11. Nenhuma tarefa começa sem a anterior aprovada. S0 e T10/T11 são executadas pelo Gabriel no Microsoft 365 (o Copilot não opera Power Apps); o Claude fornece especificação e revisa.
-
-### S0 — Validação do ambiente Microsoft 365 (Gabriel)
-- **Objetivo:** provar que as peças do ADR-003 funcionam no tenant antes de escrever código.
-- **Aceite:** checklist "Validações pendentes" do ADR-003 concluído, com prints ou links.
-
-### T0 — Esqueleto do repositório e quality gates
-- **Objetivo:** repo vazio funcional com lint, type-check e testes rodando em CI.
-- **Arquivos:** `pyproject.toml`, `src/opex/__init__.py`, `tests/test_smoke.py`, `.github/workflows/ci.yml`, `.github/copilot-instructions.md`, `.gitignore`, `docs/ARCHITECTURE.md`.
-- **Restrições:** sem lógica de negócio; `data/` no `.gitignore`.
-- **Aceite:** `ruff check`, `mypy src`, `pytest` passam local e no CI.
-- **Validação:** `ruff check . && mypy src && pytest -q`
-- **Prompt Copilot:**
-  > Crie um projeto Python 3.12 chamado `opex` com layout `src/`. Use `pyproject.toml` (hatchling) com dependências pandas, openpyxl, pandera, pyyaml, jinja2 e dev-deps pytest, pytest-cov, ruff, mypy, pandas-stubs. Configure ruff (line-length 100, regras E,F,I,B,UP) e mypy strict para `src/opex`. Crie `tests/test_smoke.py` que importa `opex`. Crie `.github/workflows/ci.yml` que roda `ruff check .`, `mypy src` e `pytest -q --cov=opex`. Adicione `.gitignore` incluindo `data/`, `out/`, `.venv/`. Não crie nenhum módulo de negócio além de `__init__.py`.
-
-### T1 — Domínio e contratos
-- **Objetivo:** tipos e enums únicos usados por todas as etapas.
-- **Arquivos:** `src/opex/domain.py`, `tests/unit/test_domain.py`.
-- **Dependências:** T0.
-- **Restrições:** valores monetários como `Decimal` arredondado a 2 casas na borda; enums `Cen2`, `Categoria`, `Classificacao`, `Confianca`; mapa de meses PT→int.
-- **Aceite:** enums cobrem todos os valores observados; mês inválido levanta erro.
-- **Validação:** `pytest tests/unit/test_domain.py -q && mypy src`
-- **Prompt Copilot:**
-  > Em `src/opex/domain.py`, defina: `class Cen2(StrEnum)` com `ORC_BG="ORC+BG"` e `REAL="REAL"`; `class Categoria(StrEnum)`: OPORTUNIDADE, COMPROMISSO, PRESSAO, A_VALIDAR; `class Classificacao(StrEnum)`: COMPROMISSO, POSTERGACAO, CANCELAMENTO, ECONOMIA, A_VALIDAR; `class Confianca(StrEnum)`: ALTA, MEDIA, BAIXA; constante `MESES_PT: dict[str,int]` (Janeiro→1 … Dezembro→12) e função `mes_para_int(nome: str) -> int` que aceita maiúsculas/minúsculas e levanta `ValueError` com o nome recebido se inválido. Escreva testes cobrindo os 12 meses, case-insensitive e erro. Sem dependência de pandas neste módulo.
-
-### T2 — Ingestão com row_key e manifest
-- **Objetivo:** ler a aba `Base` (header na linha 2) para um DataFrame tipado com `row_key` estável.
-- **Arquivos:** `src/opex/ingest.py`, `tests/unit/test_ingest.py`, `tests/fixtures/base_min.xlsx` (gerado por script de teste).
-- **Dependências:** T1.
-- **Restrições:** não filtrar nem corrigir dados aqui; apenas renomear colunas para snake_case, converter `Mês` para int e `Valor` para float (nulos mantidos). `row_key` = sha1 de (nome_origem, cenario, cc, projeto, finalidade, fornecedor, conta, mes, valor, lancamento, ordem de ocorrência entre duplicatas). Registrar hash SHA-256 do arquivo e contagem de linhas.
-- **Aceite:** `row_key` única; mesma entrada → mesmas chaves; contagem = linhas da aba.
-- **Validação:** `pytest tests/unit/test_ingest.py -q`
-- **Prompt Copilot:** detalhado na abertura da tarefa (depende de D3/D4).
-
-### T3 — Validação de qualidade (DQ)
-- **Objetivo:** schema pandera + regras G7/G8/G9 com níveis ERROR/WARN e `dq_report.md`.
-- **Aceite:** reproduz na base real: 18 valores nulos (WARN), 2 linhas sem origem (conforme D4), coluna `ID Contrato / Acordo` com valor monetário (WARN).
-
-### T4 — Dicionário de nomes curtos
-- **Objetivo:** `config/project_aliases.csv` + função que aplica alias; projeto sem alias → ERROR listando faltantes.
-- **Aceite:** 250 projetos cobertos; aliases únicos; ≤ 30 caracteres.
-
-### T5 — Consolidação N4 × projeto + real sem orçamento
-- **Objetivo:** `fact_forecast` base (sem input) com regra R1 no grão de D1 e lineage.
-- **Aceite:** totais = controles; bruto positivo 17,54 mi e pressões −3,71 mi reproduzidos no grão N4+Projeto; cada `row_key` em exatamente uma linha.
-
-### T6 — Forecast e classificação
-- **Objetivo:** juntar `forecast_inputs.csv`, calcular forecast de fechamento e oportunidade ajustada, aplicar R2–R4.
-- **Aceite:** linha sem input = A_VALIDAR; input sem justificativa/responsável/confiança = ERROR; testes para cada categoria.
-
-### T7 — Reconciliação e manifest
-- **Objetivo:** `config/controls.yaml` + verificação automática; `run_manifest.json`.
-- **Aceite:** divergência > R$ 1 aborta com diff legível.
-
-### T8 — Publicação (snapshot + one-pager)
-- **Objetivo:** `out/AAAA-MM-DD/` com parquet, xlsx de trabalho e HTML de uma tela: KPIs (ORC+BG, Real, Saldo, Utilização, Forecast, Oportunidade ajustada), cascata ORC → Real → Compromissos → Pressões → Oportunidade, tabela por N4 com drill para projeto, lista "A validar" com responsável.
-- **Aceite:** valores do HTML = valores do parquet (teste); sem e-mails no HTML.
+| ID | Pergunta | Status |
+|---|---|---|
+| D1 | Qual grão/regra gera R$ 504.391 de "real sem orçamento"? | **Aberta** — recomendação: N4 + Projeto (R$ 935.757) e atualizar o controle. Bloqueia T7 |
+| D2 | Repositório | ✅ Repositório novo, privado |
+| D3 | Fonte da verdade do orçamento | **Aberta** — recomendação: aba `Base` (Acompanhamento_PLAT_CORE). Bloqueia T2 |
+| D4 | 2 linhas sem origem (−R$ 373 mil) e 18 valores nulos | **Aberta** — recomendação: manter as 2 com WARN; nulos = 0 com WARN. Bloqueia T3 |
+| D5 | Canal de coleta | ✅ ADR-004: Neon + app na Vercel |
+| D6 | Autenticação da Fase 2 | **Aberta** — decidir antes da Fase 2 |
 
 ---
 
-> Ajuste do ADR-003 sobre T5–T8: a entrada do forecast passa a ser `input/AAAA-MM-DD.csv` exportado da Lista `ForecastInput`; as saídas vão para a pasta sincronizada do SharePoint. A CLI tem dois comandos: `opex prepare` e `opex publish`.
+## 5. IMPLEMENTATION PLAN — Fase 1
 
-### T9 — Adaptador SharePoint (Python)
-- **Objetivo:** `opex prepare` escreve `forecast_base.xlsx` (tabela `tblBase`, colunas fixas do contrato) na pasta sincronizada; `opex publish` lê o CSV exportado.
-- **Restrições:** caminho da pasta via variável de ambiente `OPEX_SHAREPOINT_DIR`, nunca fixo no código; detectar arquivo bloqueado e abortar com mensagem clara; escrever em arquivo temporário e renomear (escrita atômica).
-- **Aceite:** testes com diretório temporário cobrindo arquivo bloqueado, CSV com colunas faltando e CSV com `linha_id` desconhecido.
+Ordem: T0 → T1 → … → T8. Nenhuma tarefa começa sem a anterior aprovada.
 
-### T10 — Lista `ForecastInput` + fluxo "Fechar rodada" (Gabriel)
-- **Objetivo:** lista com colunas do contrato `forecast_input`, versionamento ativado, permissões restritas; fluxo manual que exporta a lista para CSV com cabeçalhos idênticos ao contrato.
-- **Aceite:** CSV exportado passa no validador da T9 sem ajustes.
+### T0 — Esqueleto do monorepo e quality gates  ✅ liberada
+- **Objetivo:** estrutura de pastas, projeto Python do ETL, ferramenta de migrations e CI rodando, sem lógica de negócio.
+- **Arquivos:** `etl/pyproject.toml`, `etl/src/opex_etl/__init__.py`, `etl/tests/test_smoke.py`, `db/migrations/.gitkeep`, `.github/workflows/ci.yml`, `.env.example`, `Makefile`.
+- **Restrições:** não criar tabelas, views nem módulos de negócio; não alterar `docs/`, `README.md`, `.gitignore` nem `.github/copilot-instructions.md`.
+- **Aceite:** `make check` passa localmente e no CI; CI sobe `postgres:16` e roda `dbmate up` sem erro (sem migrations ainda).
+- **Validação:** `make check`
+- **Prompt Copilot:** ver seção 5.1.
 
-### T11 — Power Apps "Forecast Opex 2026" (Gabriel)
-- **Objetivo:** tela com galeria por N4 → projeto, filtro pelo responsável logado, formulário de edição dos campos de input, prévia `realizado + previsão` rotulada como prévia.
-- **Restrições:** nenhuma regra de classificação no app; exportar `.msapp` para `powerplatform/` a cada versão.
-- **Aceite:** responsável só edita as próprias linhas; campos obrigatórios validados; prévia bate com o teste de contrato.
+### T1 — Domínio e contratos (Python)
+Enums e tipos espelhando os enums do banco; `mes_para_int`; constantes de colunas da aba Base. Aceite: cobre todos os valores observados; erros explícitos.
+
+### T2 — Ingestão com row_key (depende de D3)
+Lê a aba `Base` (cabeçalho na linha 2), renomeia colunas para snake_case, gera `row_key` estável e única (inclui ordem de ocorrência para duplicatas), calcula sha256 do arquivo. Aceite: 14.613 linhas; chaves únicas; determinístico.
+
+### T3 — Validação de qualidade (depende de D4)
+Schema pandera + regras ERROR/WARN + `dq_report.md`. Aceite: detecta na base real os 18 nulos, as 2 linhas sem origem e a coluna `ID Contrato / Acordo` com valor monetário.
+
+### T4 — Normalização e nomes curtos
+`config/project_aliases.csv` (250 projetos) e `config/responsaveis.csv`; projeto sem alias = ERROR listando faltantes. Aceite: aliases únicos, ≤ 30 caracteres.
+
+### T5 — Schema do banco (migrations)
+Tabelas, enums, índices, trigger de histórico de `forecast_input`, usuário de aplicação sem DDL. Aceite: `dbmate up` e `dbmate rollback` funcionam; testes de integração verificam constraints.
+
+### T6 — Carga idempotente
+`opex-etl load <arquivo>`: abre `import_run`, carrega em staging, faz upsert, cria `forecast_linha` novas, nunca apaga `forecast_input`. Aceite: recarga do mesmo arquivo não altera nada; linha que some da base é marcada inativa, não apagada.
+
+### T7 — Views de regra de negócio (depende de D1)
+`vw_saldo_linha`, `vw_saldo_reagrupado`, `vw_forecast`, `vw_resumo_n4`, `vw_reconciliacao`. Aceite: testes de integração cobrindo R1–R5; bruto positivo 17,54 mi e pressões −3,71 mi reproduzidos no grão N4 + Projeto.
+
+### T8 — Reconciliação e CLI final
+`opex-etl reconcile` compara com `config/controls.yaml` e fecha o `import_run`. Aceite: divergência > R$ 1 marca `failed` com diferença por controle.
+
+Fases 2 e 3 serão detalhadas após o aceite da T8 e a decisão D6.
+
+### 5.1 Prompt para o Copilot — T0
+
+> **Contexto:** monorepo de forecast Opex 2026. Leia `.github/copilot-instructions.md` e `docs/ARCHITECTURE.md` (seções 3.10 e 5/T0) antes de começar. Esta tarefa cria **apenas** a estrutura e os quality gates.
+>
+> **Faça:**
+> 1. `etl/pyproject.toml` (gerenciado por `uv`, build backend hatchling, pacote `opex_etl` em `etl/src/`), Python `>=3.12`. Dependências: `pandas`, `openpyxl`, `pandera`, `psycopg[binary]>=3.2`, `pyyaml`, `python-dotenv`. Dev: `pytest`, `pytest-cov`, `ruff`, `mypy`, `pandas-stubs`, `types-PyYAML`.
+> 2. Configuração do ruff (line-length 100; regras `E,F,I,B,UP,SIM`) e do mypy (`strict = true` para `opex_etl`) dentro do `pyproject.toml`.
+> 3. `etl/src/opex_etl/__init__.py` com `__version__ = "0.1.0"` e `etl/tests/test_smoke.py` que importa o pacote e confere a versão.
+> 4. `db/migrations/.gitkeep`.
+> 5. `.env.example` com `DATABASE_URL=postgres://user:pass@host/db?sslmode=require` e `DATABASE_URL_TEST=postgres://postgres:postgres@localhost:5432/opex_test?sslmode=disable`, comentados.
+> 6. `Makefile` na raiz com alvos `install` (`uv sync` em `etl/`), `lint` (`ruff check` e `ruff format --check`), `typecheck` (`mypy src`), `test` (`pytest -q --cov=opex_etl`), `check` (lint + typecheck + test) e `migrate` (`dbmate --migrations-dir db/migrations up`).
+> 7. `.github/workflows/ci.yml`: gatilho em push e pull_request; serviço `postgres:16` com healthcheck; instala `uv` e `dbmate`; roda `dbmate --url $DATABASE_URL_TEST --migrations-dir db/migrations --no-dump-schema up` e depois `make check`.
+>
+> **Não faça:** nenhuma tabela, view, módulo de domínio ou leitura de planilha; não altere `docs/`, `README.md`, `.gitignore` nem `.github/copilot-instructions.md`; não adicione dependências além das listadas.
+>
+> **Pronto quando:** `make check` passa localmente e o workflow fica verde.
+
+---
 
 ## 6. Protocolo de revisão por tarefa
 
-Para cada entrega do Copilot: ler o diff inteiro → rodar `ruff`, `mypy`, `pytest --cov` → checar contra critérios de aceite e restrições → verificar mudanças fora do escopo → classificar **APPROVED / APPROVED WITH NOTES / CHANGES REQUIRED / BLOCKED** → se CHANGES REQUIRED, emitir prompt de correção objetivo.
+Para cada entrega do Copilot: ler o diff inteiro → rodar `make check` → checar critérios de aceite e restrições → verificar mudanças fora do escopo → classificar **APPROVED / APPROVED WITH NOTES / CHANGES REQUIRED / BLOCKED** → se CHANGES REQUIRED, emitir prompt de correção objetivo.
 
 ## 7. Registro de decisões (ADR)
-- ADR-001 (proposta): Forecast anual por projeto em vez de mensal, porque o faseamento mensal do ORC+BG contém revisões lançadas fora do mês (Fev = −17,3 mi). *Status: proposto.*
-- ADR-002 (proposta): Visão executiva separa saldo bruto, pressões e líquido. *Status: proposto.*
-- ADR-003: Canal de entrada — SharePoint (Excel para a base, Lista para o input) + Power Apps + pipeline Python local com exportação CSV via Power Automate. *Status: aceito.* Ver `docs/adr/ADR-003-canal-de-entrada-do-forecast.md`.
+- ADR-001 (proposto): forecast anual por linha, não mensal (faseamento do orçamento contém revisões fora do mês).
+- ADR-002 (proposto): visão executiva separa saldo bruto, pressões e líquido.
+- ADR-003: canal de entrada via SharePoint + Power Apps. *Status: substituído pelo ADR-004.*
+- ADR-004: Neon como sistema de registro do futuro; regras de negócio em views SQL; ETL Python local; coleta e visual em Next.js na Vercel. *Status: aceito com condições de segurança.*

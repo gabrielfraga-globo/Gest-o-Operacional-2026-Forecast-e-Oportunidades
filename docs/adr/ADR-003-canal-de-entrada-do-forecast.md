@@ -1,6 +1,6 @@
 # ADR-003 — Canal de entrada do forecast e hospedagem
 
-- **Status:** Aceito (P1 e P2 resolvidos em 27/10/2026); validação técnica pendente na tarefa S0
+- **Status:** Substituído pelo ADR-004 em 27/10/2026
 - **Data:** 27/10/2026
 - **Decisores:** Gabriel (dono do produto), Claude (arquitetura)
 
