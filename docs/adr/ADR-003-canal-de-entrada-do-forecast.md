@@ -1,6 +1,6 @@
 # ADR-003 — Canal de entrada do forecast e hospedagem
 
-- **Status:** Proposto (aguardando confirmação de Gabriel)
+- **Status:** Aceito com pendências (P1, P2)
 - **Data:** 27/10/2026
 - **Decisores:** Gabriel (dono do produto), Claude (arquitetura)
 
@@ -10,71 +10,83 @@ Os responsáveis por cada N4/projeto precisam informar, até dezembro, a previs�
 classificação, justificativa, responsável, confiança e próxima ação. O resultado alimenta uma visão
 executiva de uma tela para reuniões.
 
-Características do problema:
 - **Volume pequeno:** ~270 linhas N4 × projeto; ~10–15 responsáveis.
-- **Horizonte curto:** o forecast é útil até o fechamento de dezembro de 2026, com ~2 meses de uso.
-- **Dados sensíveis:** valores contratuais, fornecedores e e-mails corporativos de aprovadores.
-- **Cadência:** atualização por rodada de reunião, não em tempo real.
+- **Horizonte curto:** uso até o fechamento de dezembro de 2026.
+- **Dados sensíveis:** valores contratuais, fornecedores, e-mails corporativos.
+- **Cadência:** atualização por rodada de reunião.
+- **Requisito do dono (27/10):** a edição acontece **numa tela**, não diretamente nas células; a planilha
+  (Google Sheets ou Excel) pode ser o armazenamento por trás.
 
 A stack Vercel + Neon foi trazida de outro projeto que precisava de interatividade.
 
-## Opções
+## Opções avaliadas
 
-| Critério | A. CLI local + planilha de input | B. App web Vercel + Neon | C. Planilha corporativa compartilhada + pipeline Python |
+| Critério | A. CLI local + planilha | B. App Vercel + Neon | C. Planilha corporativa como backend + tela no próprio ecossistema |
 |---|---|---|---|
-| Responsáveis preenchem sozinhos | Não — arquivos voltam por e-mail e alguém consolida | Sim | Sim, cada um na sua aba ou faixa protegida |
-| Autenticação | Não se aplica | Precisa ser construída e mantida | Já existe (SSO corporativo) |
-| Onde ficam os dados | Máquina local | Contas pessoais Vercel/Neon fora do controle da empresa | Dentro do tenant corporativo |
-| Validação dos campos | Só na execução do pipeline | Formulário + API | Validação de dados da planilha + pipeline |
-| Esforço até a 1ª reunião | Baixo | Alto (UI, API, auth, deploy, migrations) | Baixo/médio |
-| Custo e termos de uso | Zero | Plano Hobby é para uso não comercial | Zero (licença existente) |
-| Interatividade da visão executiva | HTML estático gerado | Total | HTML gerado ou dashboard na própria ferramenta |
-| Histórico/auditoria | Snapshot por rodada | Precisa ser construído | Histórico de versões nativo + snapshot por rodada |
+| Edição numa tela | Não | Sim | Sim (Apps Script web app ou Power Apps) |
+| Autenticação | n/a | Construir e manter | SSO corporativo nativo |
+| Onde ficam os dados | Máquina local | Contas pessoais externas | Tenant corporativo |
+| Esforço até a 1ª reunião | Baixo | Alto | Médio |
+| Custo / termos | Zero | Hobby = uso não comercial | Zero (licença existente) |
+| Auditoria | Snapshot | Construir | Histórico nativo + log de edições |
 
-## Decisão proposta
+## Decisão
 
-**Opção C agora, com o núcleo de cálculo isolado de forma que a opção B possa ser adotada depois sem
-reescrever regras de negócio.**
+**Opção C.** Planilha corporativa como armazenamento, tela de edição hospedada no próprio ecossistema
+corporativo, núcleo de cálculo em Python isolado (ports & adapters).
 
-Arquitetura em camadas (ports & adapters):
+Implementação padrão (se P1 = Google Workspace):
+- **Armazenamento:** uma Google Sheet `Forecast Opex 2026` restrita ao domínio.
+- **Tela:** Google Apps Script web app (HtmlService) vinculado à planilha, publicado com acesso restrito
+  ao domínio, executando como o usuário que acessa. Código versionado no repositório via `clasp`.
+
+Equivalente (se P1 = Microsoft 365): Excel no SharePoint + Power Apps (conectores padrão).
+
+### Contrato da planilha (fonte da verdade compartilhada)
+
+| Aba | Escrita por | Conteúdo |
+|---|---|---|
+| `base` | Pipeline Python (somente leitura para humanos) | chave `linha_id`, N4, projeto_curto, responsável sugerido, ORC+BG, realizado, saldo, `rodada` |
+| `input` | Tela | `linha_id`, previsao_futura, classificacao, justificativa, confianca, proxima_acao, editado_por, editado_em |
+| `log` | Tela (somente acréscimo) | cada salvamento: linha_id, campo, valor_anterior, valor_novo, usuário, timestamp |
+| `controle` | Pipeline | rodada, hash da base, totais de controle, status da reconciliação |
+
+### Divisão de responsabilidades
 
 ```
-┌─────────────── adaptadores de entrada ───────────────┐
-│ ExcelBaseReader (planilha de origem)                 │
-│ ForecastInputReader  ← planilha corporativa (C)       │
-│                      ← (futuro) Postgres/Neon (B)     │
-└───────────────────────────┬──────────────────────────┘
-                            ▼
-           núcleo de domínio puro (Python, sem I/O)
-   consolidar · aplicar forecast · classificar · reconciliar
-                            ▼
-┌──────────────── adaptadores de saída ────────────────┐
-│ Snapshot (parquet/xlsx) · One-pager HTML              │
-│ ForecastTemplateWriter → gera/atualiza a planilha de  │
-│   input com os saldos pré-preenchidos por responsável │
-└──────────────────────────────────────────────────────┘
+ Base contábil (xlsx) ─► Pipeline Python ──escreve──► aba base / controle
+                              ▲                              │
+                              └────lê──── aba input ◄────────┤
+                                                             ▼
+                                            Tela (Apps Script / Power Apps)
+                                     lê base+input · edita input · grava log
+ Pipeline Python ─► snapshot datado + one-pager executivo (versão oficial da reunião)
 ```
 
-Fluxo de cada rodada:
-1. O pipeline lê a base e gera a planilha de input com N4, projeto, ORC+BG, realizado e saldo
-   pré-preenchidos (somente leitura) e as colunas de input vazias ou com o valor da rodada anterior.
-2. Cada responsável preenche apenas as suas linhas (faixas protegidas, listas de validação para
-   classificação e confiança).
-3. O pipeline lê o input, valida (campo obrigatório vazio = erro listando a linha), calcula, reconcilia
-   e publica snapshot + one-pager.
+**Regra anti-duplicação:** regras de negócio (classificação, oportunidade ajustada, reconciliação) existem
+**só** no Python. A tela faz apenas:
+1. validação de preenchimento (campos obrigatórios, listas fechadas, número ≥ 0);
+2. cálculo de exibição `forecast_fechamento = realizado + previsao_futura` e
+   `oportunidade_ajustada = orc_bg − forecast_fechamento`, rotulado como "prévia";
+3. bloqueio de edição de linhas de outro responsável (exceto perfil administrador).
+
+O número oficial é sempre o do pipeline. Um teste de contrato garante que a prévia da tela e o Python
+dão o mesmo resultado para os mesmos dados.
 
 ## Consequências
 
-- **Positivas:** dados ficam no ambiente corporativo; autenticação resolvida; primeira reunião possível em
-  dias; regras de negócio 100% testáveis sem UI; troca para B depois afeta só um adaptador.
-- **Negativas:** a interatividade da visão executiva fica limitada a filtros do HTML; a validação na planilha é
-  mais fraca que a de um formulário (compensada pela validação no pipeline).
-- **Gatilhos para reavaliar e migrar para B:** (a) a planilha compartilhada gerar conflitos frequentes de
-  edição; (b) a necessidade de cenários what-if ao vivo na reunião; (c) o uso continuar em 2027 com
-  mais áreas. Pré-requisitos de B: aprovação de segurança da informação para hospedagem externa,
-  autenticação obrigatória desde o primeiro deploy, e conta/plano compatível com uso corporativo.
+- **Positivas:** dados e login dentro da empresa; edição em tela; regras testáveis sem UI; histórico
+  auditável; trocar a tela por um app web (opção B) no futuro afeta só um adaptador.
+- **Negativas:** Apps Script tem limites de cota e uma experiência de desenvolvimento mais pobre;
+  duas linguagens no repositório (Python + JS/Apps Script).
+- **Gatilhos para migrar para B:** conflitos de edição frequentes, simulação de cenários ao vivo na
+  reunião, ou uso em 2027 com mais áreas. Pré-requisitos de B: aprovação de segurança da informação,
+  autenticação obrigatória desde o primeiro deploy, plano compatível com uso corporativo.
 
-## Pendências para fechar este ADR
+## Pendências
 
-1. Qual ferramenta corporativa os responsáveis já usam (Google Sheets no Workspace ou Excel no SharePoint/OneDrive)?
-2. Confirmar que o repositório ficará privado (independente da opção, o código e o ARCHITECTURE.md contêm números da empresa).
+- **P1:** confirmar o ecossistema corporativo usado pelos responsáveis: Google Workspace ou Microsoft 365.
+- **P2:** como o pipeline Python acessa a planilha. Ordem de preferência:
+  (a) conta de serviço/credencial autorizada pela TI;
+  (b) OAuth do próprio Gabriel rodando localmente;
+  (c) troca manual de arquivo (exporta/importa CSV) como contingência.
