@@ -60,27 +60,24 @@ body {
 }
 
 /* Navegação em pílula */
-.pilula {
+.nav-pilula {
   position: fixed;
   top: 1.25rem;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 4px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 6px;
+  max-width: calc(100vw - 2rem);
+  overflow-x: auto;
 }
 
-.pilula ul {
-  display: flex;
-  gap: 4px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.pilula a {
+.nav-item {
   display: block;
   padding: 8px 14px;
   min-height: 44px;
@@ -93,9 +90,19 @@ body {
   white-space: nowrap;
 }
 
-.pilula a[aria-current="page"] {
+.nav-item:hover {
+  color: var(--text);
+}
+
+.nav-item-ativo {
   background: var(--surface-active);
   color: var(--text);
+}
+
+.nav-item:focus-visible,
+.nav-sair:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
 }
 
 /* Alternador de tema */
@@ -316,14 +323,9 @@ body {
     grid-template-columns: 1fr;
   }
 
-  .pilula {
+  .nav-pilula {
     left: 1rem;
     right: 1rem;
     transform: none;
-    overflow-x: auto;
-  }
-
-  .pilula ul {
-    justify-content: center;
   }
 }
