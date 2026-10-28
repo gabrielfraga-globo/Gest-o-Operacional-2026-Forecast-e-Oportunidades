@@ -1,5 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { formatarMilhoes, formatarPercentual, formatarReais } from '@/lib/formato';
+import { formatarMilhoes, formatarPercentual, formatarReais, formatarReaisInteiro } from '@/lib/formato';
+
+describe('formatarReaisInteiro', () => {
+  it('formata sem casas decimais com separador de milhar', () => {
+    expect(formatarReaisInteiro(68623868.85)).toBe('R$ 68.623.869');
+  });
+
+  it('formata negativos com sinal de menos', () => {
+    expect(formatarReaisInteiro(-1234.4)).toBe('-R$ 1.234');
+  });
+
+  it('formata zero', () => {
+    expect(formatarReaisInteiro(0)).toBe('R$ 0');
+  });
+
+  it('arredonda meio para cima', () => {
+    expect(formatarReaisInteiro(0.5)).toBe('R$ 1');
+    expect(formatarReaisInteiro(0.4)).toBe('R$ 0');
+  });
+});
 
 describe('formatarReais', () => {
   it('formata valores positivos com separador de milhar e vírgula decimal', () => {
