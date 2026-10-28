@@ -1,0 +1,59 @@
+:root {
+  --bg: #1f2329;
+  --surface: #252a31;
+  --border: #30363f;
+  --surface-active: #2e343c;
+  --text: #f2f2f0;
+  --text-muted: #b5bac2;
+  --text-subtle: #8a9099;
+  --brand: #f07e1b;
+  --brand-tint: #3a2f25;
+
+  --cat-capex: #5ba4d9;
+  --cat-portfolio: #a79be5;
+  --cat-capacidade: #e6be4a;
+  --cat-fin-operacional: #e8875a;
+  --cat-esg: #8cc152;
+  --area-bg: #513c35;
+
+  --oportunidade: #7cc37f;
+  --pressao: #e5675a;
+  --a-validar: #e6be4a;
+  --compromisso: #8a9099;
+
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --fs-display: 5rem;
+  --fs-h1: 2.25rem;
+  --fs-kpi: 2rem;
+  --fs-h2: 1.375rem;
+  --fs-lead: 1.1875rem;
+  --fs-body: 0.9375rem;
+  --fs-nav: 0.875rem;
+  --fs-eyebrow: 0.75rem;
+  --fs-label: 0.6875rem;
+
+  color-scheme: dark;
+}
+
+/* TODO: confirmar paleta clara no site. Valores provisórios para legibilidade. */
+[data-theme='light'] {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --border: #d9dde3;
+  --surface-active: #e9ecf0;
+  --text: #1f2329;
+  --text-muted: #4a5159;
+  --text-subtle: #6b7280;
+  --brand-tint: #fbe9da;
+  --area-bg: #f6e6dd;
+
+  color-scheme: light;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --fs-display: 3rem;
+    --fs-h1: 1.75rem;
+    --fs-kpi: 1.625rem;
+  }
+}
