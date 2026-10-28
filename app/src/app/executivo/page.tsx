@@ -1,4 +1,9 @@
-export default function PaginaExecutivo() {
+import { exigirSessao } from "@/server/sessao";
+
+export const dynamic = "force-dynamic";
+
+export default async function PaginaExecutivo() {
+  await exigirSessao();
   return (
     <section className="vazio" aria-labelledby="executivo-titulo">
       <p className="eyebrow">VISÃO EXECUTIVA</p>

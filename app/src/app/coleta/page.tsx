@@ -1,4 +1,9 @@
-export default function PaginaColeta() {
+import { exigirSessao } from "@/server/sessao";
+
+export const dynamic = "force-dynamic";
+
+export default async function PaginaColeta() {
+  await exigirSessao();
   return (
     <section className="vazio" aria-labelledby="coleta-titulo">
       <p className="eyebrow">COLETA</p>

@@ -4,6 +4,7 @@ import "../styles/tokens.css";
 import "./globals.css";
 import { AlternadorTema } from "@/components/alternador-tema";
 import { NavPilula } from "@/components/nav-pilula";
+import { obterUsuarioAtual } from "@/server/sessao";
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -20,14 +21,16 @@ export const metadata: Metadata = {
 // Aplica o tema salvo antes da primeira pintura; padrão escuro.
 const scriptTema = `(function(){try{document.documentElement.dataset.theme=localStorage.getItem('tema')==='light'?'light':'dark';}catch(e){document.documentElement.dataset.theme='dark';}})();`;
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const usuario = await obterUsuarioAtual();
+
   return (
     <html lang="pt-BR" className={plusJakarta.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: scriptTema }} />
       </head>
       <body>
-        <NavPilula />
+        {usuario && <NavPilula nome={usuario.nome} />}
         <main className="conteudo">{children}</main>
         <AlternadorTema />
       </body>

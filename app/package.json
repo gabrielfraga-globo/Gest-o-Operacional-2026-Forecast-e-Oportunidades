@@ -13,7 +13,9 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "better-auth": "^1.7.14",
     "next": "16.4.3",
+    "nodemailer": "^10.2.1",
     "pg": "^8.23.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
@@ -21,6 +23,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
+    "@types/nodemailer": "^8.0.2",
     "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",

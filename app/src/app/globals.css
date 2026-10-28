@@ -226,6 +226,77 @@ body {
   cursor: pointer;
 }
 
+.formulario-login {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 2rem;
+  max-width: 420px;
+}
+
+.campo-rotulo {
+  font-size: var(--fs-label);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+.campo-entrada {
+  font: inherit;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.botao-primario {
+  font: inherit;
+  font-weight: 700;
+  padding: 0.7rem 1.1rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--brand);
+  color: #1f2329;
+  cursor: pointer;
+  justify-self: start;
+}
+
+.botao-primario:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.aviso-login {
+  margin: 1.5rem 0 0;
+  padding: 0.9rem 1.1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--pressao);
+  border-radius: 12px;
+  color: var(--text);
+}
+
+.nav-usuario {
+  font-size: var(--fs-nav);
+  color: var(--text-muted);
+  padding: 0 0.5rem;
+}
+
+.nav-sair {
+  font: inherit;
+  font-size: var(--fs-nav);
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0 0.5rem;
+}
+
+.nav-sair:hover {
+  color: var(--text);
+}
+
 .vazio {
   max-width: 560px;
   margin: 4rem auto 0;

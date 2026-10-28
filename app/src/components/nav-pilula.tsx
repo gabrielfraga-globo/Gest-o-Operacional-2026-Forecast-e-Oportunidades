@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { authClient } from '@/lib/auth-client';
 
 const ITENS = [
   { href: '/', rotulo: 'Início' },
@@ -9,8 +10,15 @@ const ITENS = [
   { href: '/executivo', rotulo: 'Visão executiva' },
 ] as const;
 
-export function NavPilula() {
+export function NavPilula({ nome }: { nome: string }) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function sair() {
+    await authClient.signOut();
+    router.replace('/login');
+    router.refresh();
+  }
 
   return (
     <nav className="nav-pilula" aria-label="Principal">
@@ -27,6 +35,10 @@ export function NavPilula() {
           </Link>
         );
       })}
+      <span className="nav-usuario">{nome}</span>
+      <button type="button" className="nav-sair" onClick={sair}>
+        Sair
+      </button>
     </nav>
   );
 }
