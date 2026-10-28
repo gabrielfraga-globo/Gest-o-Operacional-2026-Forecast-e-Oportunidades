@@ -216,7 +216,7 @@ export default async function PaginaExecutivo() {
           titulo="Maiores pressões"
           vazio="Nenhuma linha classificada como pressão."
           linhas={pressoes}
-          colunaValor="Saldo"
+          colunaValor="Pressão"
           valorDe={(l) => l.oportunidadeAjustada}
         />
       </section>
