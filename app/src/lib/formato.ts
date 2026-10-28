@@ -28,12 +28,24 @@ export function formatarReaisInteiro(valor: number): string {
 }
 
 export function formatarMilhoes(valor: number): string {
+  const { sinal, texto } = numeroMilhoes(valor);
+  return `${sinal}R$ ${texto} mi`;
+}
+
+// Variante para rótulos apertados: só o número em milhões, sem "R$" e sem "mi".
+// A unidade fica no título do eixo.
+export function formatarMilhoesCompacto(valor: number): string {
+  const { sinal, texto } = numeroMilhoes(valor);
+  return `${sinal}${texto}`;
+}
+
+function numeroMilhoes(valor: number): { sinal: string; texto: string } {
   const milhoes = arredondarMeioParaCima(valor / 1_000_000, 1);
   const texto = milhoes.toLocaleString(LOCALE, {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   });
-  return `${sinalExibido(valor, milhoes)}R$ ${texto} mi`;
+  return { sinal: sinalExibido(valor, milhoes), texto };
 }
 
 export function formatarPercentual(fracao: number): string {

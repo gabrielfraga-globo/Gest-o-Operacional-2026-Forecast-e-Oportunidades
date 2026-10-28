@@ -1,4 +1,4 @@
-import { formatarMilhoes } from '@/lib/formato';
+import { formatarMilhoes, formatarMilhoesCompacto } from '@/lib/formato';
 import { degraus, dominioComZero, posicaoNoEixo } from '@/lib/graficos';
 
 export interface EntradaCascata {
@@ -15,6 +15,7 @@ interface Layout {
   readonly topo: number;
   readonly plotagem: number;
   readonly barra: number;
+  readonly margem: number;
   readonly rotulos: readonly [string, string, string, string];
 }
 
@@ -24,15 +25,18 @@ const LAYOUT_COMPLETO: Layout = {
   topo: 28,
   plotagem: 180,
   barra: 68,
+  margem: 0,
   rotulos: ['ORC+BG', 'Realizado', 'Previsão futura', 'Saldo projetado'],
 };
 
+// A margem garante que os rótulos das pontas não sejam cortados pela borda do SVG.
 const LAYOUT_COMPACTO: Layout = {
   largura: 360,
   altura: 300,
   topo: 36,
   plotagem: 220,
   barra: 56,
+  margem: 12,
   rotulos: ['ORC+BG', 'Real.', 'Previsão', 'Saldo'],
 };
 
@@ -80,10 +84,12 @@ export function GraficoCascata({
   // Duas variantes do mesmo desenho: a CSS alterna qual aparece (ver globals.css).
   const desenhar = (layout: Layout, compacto: boolean) => {
     const base = layout.topo + layout.plotagem;
-    const coluna = layout.largura / 4;
+    const coluna = (layout.largura - 2 * layout.margem) / 4;
+    const xDaColuna = (i: number): number => layout.margem + coluna * (i + 0.5);
+    const formatarValor = compacto ? formatarMilhoesCompacto : formatarMilhoes;
     const yDe = (valor: number): number => base - posicaoNoEixo(valor, dominio, layout.plotagem);
     const yZero = yDe(0);
-    const xSaldo = coluna * 3 + coluna / 2;
+    const xSaldo = xDaColuna(3);
     const semSegmentos = segmentos.every((s) => yDe(s.inicio) === yDe(s.fim));
     const pontosSaldo = segmentos.flatMap((s) => [yDe(s.inicio), yDe(s.fim)]);
     const topoSaldo = Math.min(...pontosSaldo);
@@ -99,9 +105,14 @@ export function GraficoCascata({
         className={`grafico-svg ${compacto ? 'grafico-cascata-compacto' : 'grafico-cascata-completo'}`}
       >
         <line x1={0} x2={layout.largura} y1={yZero} y2={yZero} className="grafico-eixo" />
+        {compacto && (
+          <text x={layout.margem} y={14} textAnchor="start" className="grafico-rotulo-eixo">
+            R$ mi
+          </text>
+        )}
 
         {passos.slice(0, 3).map((p, i) => {
-          const cx = coluna * i + coluna / 2;
+          const cx = xDaColuna(i);
           const ya = yDe(p.inicio);
           const yb = yDe(p.fim);
           const topo = Math.min(ya, yb);
@@ -117,7 +128,7 @@ export function GraficoCascata({
                 className={p.tipo === 'total' ? 'barra-total' : 'barra-reducao'}
               />
               <text x={cx} y={topo - 6} textAnchor="middle" className="grafico-rotulo-valor">
-                {formatarMilhoes(valor)}
+                {formatarValor(valor)}
               </text>
               <text x={cx} y={layout.altura - 6} textAnchor="middle" className="grafico-rotulo-eixo">
                 {layout.rotulos[i]}
@@ -152,7 +163,7 @@ export function GraficoCascata({
           />
         )}
         <text x={xSaldo} y={yRotuloSaldo} textAnchor="middle" className="grafico-rotulo-valor">
-          {formatarMilhoes(saldo)}
+          {formatarValor(saldo)}
         </text>
         <text x={xSaldo} y={layout.altura - 6} textAnchor="middle" className="grafico-rotulo-eixo">
           {layout.rotulos[3]}

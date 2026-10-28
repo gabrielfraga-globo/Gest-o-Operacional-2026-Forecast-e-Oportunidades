@@ -1,36 +1,6 @@
 import 'server-only';
 import nodemailer from 'nodemailer';
-
-const VARIAVEIS_SMTP = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'EMAIL_FROM'] as const;
-
-type ConfigSmtp = {
-  host: string;
-  port: number;
-  user: string;
-  pass: string;
-  from: string;
-};
-
-function lerConfigSmtp(env: NodeJS.ProcessEnv): ConfigSmtp | null {
-  const ausentes = VARIAVEIS_SMTP.filter((nome) => !env[nome]);
-  if (ausentes.length === VARIAVEIS_SMTP.length) {
-    return null;
-  }
-  if (ausentes.length > 0) {
-    throw new Error(`Configuração SMTP incompleta: falta ${ausentes.join(', ')}.`);
-  }
-  const port = Number(env.SMTP_PORT);
-  if (!Number.isInteger(port) || port <= 0) {
-    throw new Error('SMTP_PORT inválida: informe um número de porta.');
-  }
-  return {
-    host: env.SMTP_HOST as string,
-    port,
-    user: env.SMTP_USER as string,
-    pass: env.SMTP_PASS as string,
-    from: env.EMAIL_FROM as string,
-  };
-}
+import { lerSmtp } from './ambiente';
 
 function escaparHtml(texto: string): string {
   return texto
@@ -62,7 +32,7 @@ function montarMensagem(nome: string, url: string) {
 }
 
 export async function enviarLinkAcesso(destino: string, nome: string, url: string): Promise<void> {
-  const smtp = lerConfigSmtp(process.env);
+  const smtp = lerSmtp(process.env);
 
   if (smtp === null) {
     if (process.env.NODE_ENV !== 'production') {

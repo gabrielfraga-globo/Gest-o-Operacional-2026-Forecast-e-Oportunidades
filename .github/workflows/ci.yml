@@ -73,7 +73,15 @@ jobs:
 
     env:
       BETTER_AUTH_SECRET: ci-segredo-ficticio-com-mais-de-32-caracteres
-      BETTER_AUTH_URL: http://localhost:3000
+      # O build roda com NODE_ENV=production, então as variáveis de produção são exigidas.
+      # Valores fictícios: nenhum e-mail é enviado nem conexão feita no build.
+      BETTER_AUTH_URL: https://localhost:3000
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/opex_test?sslmode=disable
+      SMTP_HOST: smtp.ci.invalid
+      SMTP_PORT: 587
+      SMTP_USER: ci
+      SMTP_PASS: ci-ficticio
+      EMAIL_FROM: ci@ci.invalid
       DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5432/opex_test?sslmode=disable
 
     steps:
