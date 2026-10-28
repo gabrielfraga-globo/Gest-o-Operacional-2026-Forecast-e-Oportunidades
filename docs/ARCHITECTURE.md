@@ -2,7 +2,7 @@
 ## Revisão arquitetural (v0.3 — 27/10/2026)
 
 Papel: Claude = arquiteto/revisor · GitHub Copilot = implementador.
-Status: **v0.3 — ADR-004 aceito (Neon + Vercel). Fase 1 (interpretar, limpar, carregar) em andamento: T0 liberada; D1, D3, D4 bloqueiam T2, T3 e T7.**
+Status: **v0.4 — Fase 1 concluída em 28/10/2026: base carregada no Neon (sa-east-1) com os 4 controles reconciliados. Próximo: Fase 2 (coleta), após a decisão D6.**
 
 ---
 
@@ -205,12 +205,13 @@ Python 3.12 (uv) · pandas · pandera · psycopg 3 · pytest · ruff · mypy · 
 
 | ID | Pergunta | Status |
 |---|---|---|
-| D1 | Qual grão/regra gera R$ 504.391 de "real sem orçamento"? | **Aberta** — recomendação: N4 + Projeto (R$ 935.757) e atualizar o controle. Bloqueia T7 |
+| D1 | Real sem orçamento | ✅ N4 × código do projeto; controle R$ 918.842,40 (123 linhas) |
 | D2 | Repositório | ✅ Repositório novo, privado |
-| D3 | Fonte da verdade do orçamento | **Aberta** — recomendação: aba `Base` (Acompanhamento_PLAT_CORE). Bloqueia T2 |
-| D4 | 2 linhas sem origem (−R$ 373 mil) e 18 valores nulos | **Aberta** — recomendação: manter as 2 com WARN; nulos = 0 com WARN. Bloqueia T3 |
+| D3 | Fonte da verdade do orçamento | ✅ aba `Base` da planilha de Oportunidades |
+| D4 | 2 linhas sem origem e 18 valores nulos | ✅ mantidas com WARN; nulos = 0 |
+| D8 | Identidade do projeto | ✅ código antes do primeiro " - " (2 projetos tinham textos diferentes no orçamento e no realizado) |
 | D5 | Canal de coleta | ✅ ADR-004: Neon + app na Vercel |
-| D6 | Autenticação da Fase 2 | **Aberta** — decidir antes da Fase 2 |
+| D6 | Autenticação da Fase 2 | ✅ ADR-005: link mágico (Better Auth) com envio por Gmail SMTP; lista de acesso fechada; edição por N4 |
 | D7 | Linha sem previsão preenchida | **Adotada no playbook:** saldo positivo assumido como realizado; categoria A_VALIDAR |
 
 ---
@@ -282,4 +283,5 @@ Para cada entrega do Copilot: ler o diff inteiro → rodar `uv run poe check` �
 - ADR-001 (proposto): forecast anual por linha, não mensal (faseamento do orçamento contém revisões fora do mês).
 - ADR-002 (proposto): visão executiva separa saldo bruto, pressões e líquido.
 - ADR-003: canal de entrada via SharePoint + Power Apps. *Status: substituído pelo ADR-004.*
+- ADR-005: autenticação por link mágico (Better Auth, Gmail SMTP), papéis admin/responsável, edição por N4. *Status: aceito.*
 - ADR-004: Neon como sistema de registro do futuro; regras de negócio em views SQL; ETL Python local; coleta e visual em Next.js na Vercel. *Status: aceito com condições de segurança.*
