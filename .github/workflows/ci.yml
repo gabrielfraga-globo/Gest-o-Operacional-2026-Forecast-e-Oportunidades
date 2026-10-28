@@ -53,3 +53,68 @@ jobs:
       - name: Quality gates
         working-directory: etl
         run: uv run poe check
+
+  app:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: opex_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5432/opex_test?sslmode=disable
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Instalar dbmate
+        run: |
+          sudo curl -fsSL -o /usr/local/bin/dbmate https://github.com/amacneil/dbmate/releases/latest/download/dbmate-linux-amd64
+          sudo chmod +x /usr/local/bin/dbmate
+
+      - name: Aplicar migrations
+        # dbmate falha quando não há migrations; só roda se existir algum .sql
+        run: |
+          if ls db/migrations/*.sql >/dev/null 2>&1; then
+            dbmate --url "$DATABASE_URL_TEST" --migrations-dir db/migrations --no-dump-schema up
+          else
+            echo "Nenhuma migration ainda; passo ignorado."
+          fi
+
+      - name: Instalar dependências
+        working-directory: app
+        run: npm ci
+
+      - name: Lint
+        working-directory: app
+        run: npm run lint
+
+      - name: Typecheck
+        working-directory: app
+        run: npm run typecheck
+
+      - name: Testes
+        working-directory: app
+        run: npm test
+
+      - name: Build
+        working-directory: app
+        run: npm run build
