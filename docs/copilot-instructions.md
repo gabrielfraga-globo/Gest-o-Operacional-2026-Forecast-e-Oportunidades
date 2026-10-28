@@ -23,6 +23,6 @@ em `docs/adr/`. Cada tarefa tem um prompt com escopo fechado; implemente exatame
 - Commits pequenos, mensagem no padrão Conventional Commits.
 
 ## Antes de abrir o PR
-- `make check` verde.
+- `cd etl && uv run poe check` verde.
 - Testes novos para todo comportamento novo, incluindo casos de erro.
 - Descrição do PR lista: tarefa (Tn), o que foi feito, o que **não** foi feito, e qualquer dúvida de escopo.

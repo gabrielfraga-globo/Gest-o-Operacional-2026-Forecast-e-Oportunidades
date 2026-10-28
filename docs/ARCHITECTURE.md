@@ -220,10 +220,10 @@ Ordem: T0 → T1 → … → T8. Nenhuma tarefa começa sem a anterior aprovada.
 
 ### T0 — Esqueleto do monorepo e quality gates  ✅ liberada
 - **Objetivo:** estrutura de pastas, projeto Python do ETL, ferramenta de migrations e CI rodando, sem lógica de negócio.
-- **Arquivos:** `etl/pyproject.toml`, `etl/src/opex_etl/__init__.py`, `etl/tests/test_smoke.py`, `db/migrations/.gitkeep`, `.github/workflows/ci.yml`, `.env.example`, `Makefile`.
+- **Arquivos:** `etl/pyproject.toml`, `etl/src/opex_etl/__init__.py`, `etl/tests/test_smoke.py`, `db/migrations/.gitkeep`, `.github/workflows/ci.yml`, `.env.example` (tarefas via poethepoet no `pyproject.toml`, multiplataforma — o notebook é Windows, sem `make`).
 - **Restrições:** não criar tabelas, views nem módulos de negócio; não alterar `docs/`, `README.md`, `.gitignore` nem `.github/copilot-instructions.md`.
-- **Aceite:** `make check` passa localmente e no CI; CI sobe `postgres:16` e roda `dbmate up` sem erro (sem migrations ainda).
-- **Validação:** `make check`
+- **Aceite:** `uv run poe check` (dentro de `etl/`) passa localmente no Windows e no CI; CI sobe `postgres:16` e roda `dbmate up` sem erro (sem migrations ainda).
+- **Validação:** `cd etl && uv run poe check`
 - **Prompt Copilot:** ver seção 5.1.
 
 ### T1 — Domínio e contratos (Python)
@@ -257,23 +257,23 @@ Fases 2 e 3 serão detalhadas após o aceite da T8 e a decisão D6.
 > **Contexto:** monorepo de forecast Opex 2026. Leia `.github/copilot-instructions.md` e `docs/ARCHITECTURE.md` (seções 3.10 e 5/T0) antes de começar. Esta tarefa cria **apenas** a estrutura e os quality gates.
 >
 > **Faça:**
-> 1. `etl/pyproject.toml` (gerenciado por `uv`, build backend hatchling, pacote `opex_etl` em `etl/src/`), Python `>=3.12`. Dependências: `pandas`, `openpyxl`, `pandera`, `psycopg[binary]>=3.2`, `pyyaml`, `python-dotenv`. Dev: `pytest`, `pytest-cov`, `ruff`, `mypy`, `pandas-stubs`, `types-PyYAML`.
+> 1. `etl/pyproject.toml` (gerenciado por `uv`, build backend hatchling, pacote `opex_etl` em `etl/src/`), Python `>=3.12`. Dependências: `pandas`, `openpyxl`, `pandera`, `psycopg[binary]>=3.2`, `pyyaml`, `python-dotenv`. Dev: `pytest`, `pytest-cov`, `ruff`, `mypy`, `pandas-stubs`, `types-PyYAML`, `poethepoet`.
 > 2. Configuração do ruff (line-length 100; regras `E,F,I,B,UP,SIM`) e do mypy (`strict = true` para `opex_etl`) dentro do `pyproject.toml`.
 > 3. `etl/src/opex_etl/__init__.py` com `__version__ = "0.1.0"` e `etl/tests/test_smoke.py` que importa o pacote e confere a versão.
 > 4. `db/migrations/.gitkeep`.
 > 5. `.env.example` com `DATABASE_URL=postgres://user:pass@host/db?sslmode=require` e `DATABASE_URL_TEST=postgres://postgres:postgres@localhost:5432/opex_test?sslmode=disable`, comentados.
-> 6. `Makefile` na raiz com alvos `install` (`uv sync` em `etl/`), `lint` (`ruff check` e `ruff format --check`), `typecheck` (`mypy src`), `test` (`pytest -q --cov=opex_etl`), `check` (lint + typecheck + test) e `migrate` (`dbmate --migrations-dir db/migrations up`).
-> 7. `.github/workflows/ci.yml`: gatilho em push e pull_request; serviço `postgres:16` com healthcheck; instala `uv` e `dbmate`; roda `dbmate --url $DATABASE_URL_TEST --migrations-dir db/migrations --no-dump-schema up` e depois `make check`.
+> 6. Tarefas do poethepoet em `[tool.poe.tasks]` no `etl/pyproject.toml`: `lint` (`ruff check .` e `ruff format --check .`), `typecheck` (`mypy src`), `test` (`pytest -q --cov=opex_etl`), `check` (sequência lint → typecheck → test) e `migrate` (`dbmate --migrations-dir ../db/migrations up`). **Não crie Makefile**: o ambiente de desenvolvimento é Windows.
+> 7. `.github/workflows/ci.yml`: gatilho em push e pull_request; serviço `postgres:16` com healthcheck; instala `uv` e `dbmate`; roda `dbmate --url $DATABASE_URL_TEST --migrations-dir db/migrations --no-dump-schema up` e depois `uv sync` e `uv run poe check` dentro de `etl/`.
 >
 > **Não faça:** nenhuma tabela, view, módulo de domínio ou leitura de planilha; não altere `docs/`, `README.md`, `.gitignore` nem `.github/copilot-instructions.md`; não adicione dependências além das listadas.
 >
-> **Pronto quando:** `make check` passa localmente e o workflow fica verde.
+> **Pronto quando:** `cd etl && uv run poe check` passa no Windows e o workflow fica verde.
 
 ---
 
 ## 6. Protocolo de revisão por tarefa
 
-Para cada entrega do Copilot: ler o diff inteiro → rodar `make check` → checar critérios de aceite e restrições → verificar mudanças fora do escopo → classificar **APPROVED / APPROVED WITH NOTES / CHANGES REQUIRED / BLOCKED** → se CHANGES REQUIRED, emitir prompt de correção objetivo.
+Para cada entrega do Copilot: ler o diff inteiro → rodar `uv run poe check` → checar critérios de aceite e restrições → verificar mudanças fora do escopo → classificar **APPROVED / APPROVED WITH NOTES / CHANGES REQUIRED / BLOCKED** → se CHANGES REQUIRED, emitir prompt de correção objetivo.
 
 ## 7. Registro de decisões (ADR)
 - ADR-001 (proposto): forecast anual por linha, não mensal (faseamento do orçamento contém revisões fora do mês).
