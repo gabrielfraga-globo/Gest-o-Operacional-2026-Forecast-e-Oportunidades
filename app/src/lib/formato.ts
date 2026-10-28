@@ -20,6 +20,13 @@ export function formatarReais(valor: number): string {
   return `${sinal(valor)}R$ ${texto}`;
 }
 
+export function formatarReaisInteiro(valor: number): string {
+  const absoluto = arredondarMeioParaCima(valor, 0);
+  const texto = absoluto.toLocaleString(LOCALE, { maximumFractionDigits: 0 });
+  const negativo = valor < 0 && absoluto !== 0;
+  return `${negativo ? '-' : ''}R$ ${texto}`;
+}
+
 export function formatarMilhoes(valor: number): string {
   const milhoes = arredondarMeioParaCima(valor / 1_000_000, 1);
   const texto = milhoes.toLocaleString(LOCALE, {

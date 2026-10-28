@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatarMilhoes, formatarPercentual, formatarReais } from '@/lib/formato';
+import { formatarMilhoes, formatarPercentual, formatarReais, formatarReaisInteiro } from '@/lib/formato';
 
 describe('formatarReais', () => {
   it('formata valores positivos com separador de milhar e vírgula decimal', () => {
@@ -17,6 +17,29 @@ describe('formatarReais', () => {
   it('arredonda para duas casas', () => {
     expect(formatarReais(10.126)).toBe('R$ 10,13');
     expect(formatarReais(10.124)).toBe('R$ 10,12');
+  });
+});
+
+describe('formatarReaisInteiro', () => {
+  it('formata valores positivos sem centavos, com separador de milhar', () => {
+    expect(formatarReaisInteiro(1157864.4)).toBe('R$ 1.157.864');
+  });
+
+  it('arredonda meio para cima', () => {
+    expect(formatarReaisInteiro(1234.5)).toBe('R$ 1.235');
+    expect(formatarReaisInteiro(1234.49)).toBe('R$ 1.234');
+  });
+
+  it('formata negativos com sinal de menos', () => {
+    expect(formatarReaisInteiro(-1234.5)).toBe('-R$ 1.235');
+  });
+
+  it('não mostra sinal de menos para valor que arredonda para zero', () => {
+    expect(formatarReaisInteiro(-0.2)).toBe('R$ 0');
+  });
+
+  it('formata zero', () => {
+    expect(formatarReaisInteiro(0)).toBe('R$ 0');
   });
 });
 

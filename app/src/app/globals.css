@@ -30,6 +30,10 @@ body {
   padding: 7rem 1.5rem 5rem;
 }
 
+.conteudo:has(.coleta) {
+  max-width: 1360px;
+}
+
 .h1 {
   font-size: var(--fs-h1);
   font-weight: 800;
@@ -314,6 +318,337 @@ body {
   margin-top: 1rem;
 }
 
+.coleta {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 2rem;
+  align-items: start;
+  padding-top: 5rem;
+}
+
+.coleta > * {
+  min-width: 0;
+}
+
+.coleta-principal .h1 {
+  overflow-wrap: anywhere;
+}
+
+.coleta-nav {
+  position: sticky;
+  top: 5.5rem;
+  display: grid;
+  gap: 0.25rem;
+  align-content: start;
+}
+
+.coleta-nav-titulo {
+  font-size: var(--fs-label);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-subtle);
+  margin: 0 0 0.5rem;
+}
+
+.coleta-nav-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.coleta-nav-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 10px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: var(--fs-nav);
+}
+
+.coleta-nav-item:hover {
+  color: var(--text);
+  background: var(--surface-active);
+}
+
+.coleta-nav-ativo,
+.coleta-nav-ativo:hover {
+  color: var(--brand);
+  background: var(--brand-tint);
+  font-weight: 700;
+}
+
+.contador {
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-label);
+  min-width: 1.6rem;
+  text-align: center;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.coleta-seletor {
+  display: none;
+  width: 100%;
+  font: inherit;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  min-height: 44px;
+}
+
+.coleta-seletor select {
+  width: 100%;
+}
+
+.coleta-resumo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin: 0.75rem 0 1.5rem;
+  color: var(--text-muted);
+}
+
+.coleta-resumo strong {
+  display: block;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.1rem;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.tabela-coleta-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.tabela-coleta {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-nav);
+}
+
+.tabela-coleta th,
+.tabela-coleta td {
+  padding: 0.75rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.tabela-coleta th {
+  font-size: var(--fs-label);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  text-align: left;
+}
+
+.tabela-coleta th.num {
+  text-align: right;
+}
+
+.tabela-coleta th.projeto,
+.tabela-coleta td.projeto {
+  min-width: 240px;
+}
+
+.tabela-coleta .acao {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background: var(--surface);
+  box-shadow: -10px 0 12px -10px rgb(0 0 0 / 0.5);
+}
+
+.tabela-coleta thead .acao {
+  z-index: 2;
+}
+
+.tabela-coleta tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.projeto-nome {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.projeto-codigo {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text-subtle);
+  font-size: var(--fs-label);
+}
+
+.pilula {
+  display: inline-block;
+  font-size: var(--fs-label);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  color: var(--pilula-cor);
+  background: color-mix(in srgb, var(--pilula-cor) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pilula-cor) 40%, transparent);
+}
+
+.pilula-oportunidade { --pilula-cor: var(--oportunidade); }
+.pilula-compromisso { --pilula-cor: var(--compromisso); }
+.pilula-pressao { --pilula-cor: var(--pressao); }
+.pilula-a-validar { --pilula-cor: var(--a-validar); }
+
+.somente-leitura {
+  font-size: var(--fs-label);
+  color: var(--text-subtle);
+}
+
+.botao-secundario {
+  font: inherit;
+  font-weight: 700;
+  min-height: 44px;
+  padding: 0.6rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.botao-secundario:hover {
+  background: var(--surface-active);
+}
+
+.botao-secundario:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.aviso-coleta {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--a-validar);
+  border-radius: 12px;
+  color: var(--text);
+}
+
+.painel-edicao {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(440px, 100vw);
+  overflow-y: auto;
+  padding: 1.5rem;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: -12px 0 32px rgb(0 0 0 / 0.35);
+  z-index: 50;
+}
+
+.painel-cabecalho {
+  margin-bottom: 1rem;
+}
+
+.painel-titulo {
+  margin: 0.25rem 0 0;
+  font-size: 1.25rem;
+}
+
+.formulario-coleta {
+  display: grid;
+  gap: 1rem;
+}
+
+.campo {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.campo-entrada {
+  min-height: 44px;
+}
+
+.campo-erro {
+  margin: 0;
+  font-size: var(--fs-label);
+  color: var(--pressao);
+}
+
+.previa {
+  padding: 0.9rem 1rem;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.previa-lista {
+  margin: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.previa-lista div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.previa-lista dt {
+  color: var(--text-muted);
+}
+
+.previa-lista dd {
+  margin: 0;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.previa-nota {
+  margin: 0;
+  font-size: var(--fs-label);
+  color: var(--text-subtle);
+}
+
+.painel-acoes {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 @media (max-width: 768px) {
   .conteudo {
     padding: 6rem 1rem 6rem;
@@ -327,5 +662,112 @@ body {
     left: 1rem;
     right: 1rem;
     transform: none;
+  }
+
+  .coleta {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .coleta-nav {
+    position: static;
+  }
+
+  .coleta-nav-lista {
+    display: none;
+  }
+
+  .coleta-seletor {
+    display: block;
+  }
+
+  .coleta-principal .h1 {
+    font-size: clamp(1.5rem, 6vw, 2.25rem);
+  }
+
+  .coleta-resumo {
+    gap: 0.5rem 1rem;
+  }
+
+  .tabela-coleta-wrapper {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+  }
+
+  .tabela-coleta thead {
+    display: none;
+  }
+
+  .tabela-coleta,
+  .tabela-coleta tbody {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .tabela-coleta tr {
+    display: grid;
+    gap: 0.4rem;
+    min-width: 0;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+  }
+
+  .tabela-coleta td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    min-width: 0;
+    max-width: 100%;
+    padding: 0.2rem 0;
+    border: 0;
+    text-align: right;
+  }
+
+  .tabela-coleta td::before {
+    content: attr(data-rotulo);
+    flex-shrink: 0;
+    font-size: var(--fs-label);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-subtle);
+    text-align: left;
+  }
+
+  .tabela-coleta td.projeto {
+    display: block;
+    min-width: 0;
+    text-align: left;
+  }
+
+  .tabela-coleta td.projeto::before {
+    content: none;
+  }
+
+  .projeto-codigo {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+  }
+
+  .tabela-coleta td.acao {
+    position: static;
+    box-shadow: none;
+    background: transparent;
+    justify-content: flex-end;
+  }
+
+  .painel-edicao {
+    width: 100vw;
+  }
+}
+
+@media (max-width: 767px) {
+  .nav-usuario {
+    display: none;
   }
 }
