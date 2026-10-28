@@ -2,7 +2,7 @@
 ## Revisão arquitetural (v0.1 — 27/10/2026)
 
 Papel: Claude = arquiteto/revisor · GitHub Copilot = implementador.
-Status: **aguardando decisões D1–D5 antes de autorizar a Tarefa T1.**
+Status: **v0.2 — canal de entrada decidido (ADR-003: SharePoint + Power Apps + Python local). Aguardando D1, D3, D4 e a validação S0 antes de autorizar T0.**
 
 ---
 
@@ -184,16 +184,20 @@ forecast-opex-2026/
 | ID | Pergunta | Recomendação |
 |---|---|---|
 | D1 | Qual é o grão e a regra que geram R$ 504.391 de "real sem orçamento"? | Se não houver regra documentada, adotar **N4 + Projeto** (R$ 935.757) e atualizar o controle |
-| D2 | Existe repositório de código em algum lugar, ou começamos do zero? | Do zero, com o layout acima |
+| D2 | Existe repositório de código em algum lugar, ou começamos do zero? | ✅ **Resolvido:** repositório novo `Gest-o-Operacional-2026-Forecast-e-Oportunidades` (deve ficar privado) |
 | D3 | Qual é a fonte da verdade do orçamento: `Base` (Acompanhamento_PLAT_CORE) ou `Orçamento…xlsx`? | `Base` — é a que reconcilia com os controles; o outro arquivo vira referência de CC futuro |
 | D4 | As 2 linhas ORC sem origem (−R$ 373 mil, Dez/Outsourcing) e as 18 com valor nulo são válidas? | Manter as 2 linhas (afetam o controle) mas marcar WARN; nulos = 0 com WARN |
-| D5 | Onde o forecast futuro será preenchido pelos responsáveis? | CSV/Excel de input versionado no repo (fase 1); formulário só depois |
+| D5 | Onde o forecast futuro será preenchido pelos responsáveis? | ✅ **Resolvido (ADR-003):** Power Apps sobre Lista do SharePoint; base em Excel no SharePoint; pipeline Python no notebook do Gabriel lendo exportação CSV |
 
 ---
 
 ## 5. IMPLEMENTATION PLAN
 
-Ordem: T0 → T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8. Nenhuma tarefa começa sem a anterior aprovada.
+Ordem: S0 → T0 → T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9 → T10 → T11. Nenhuma tarefa começa sem a anterior aprovada. S0 e T10/T11 são executadas pelo Gabriel no Microsoft 365 (o Copilot não opera Power Apps); o Claude fornece especificação e revisa.
+
+### S0 — Validação do ambiente Microsoft 365 (Gabriel)
+- **Objetivo:** provar que as peças do ADR-003 funcionam no tenant antes de escrever código.
+- **Aceite:** checklist "Validações pendentes" do ADR-003 concluído, com prints ou links.
 
 ### T0 — Esqueleto do repositório e quality gates
 - **Objetivo:** repo vazio funcional com lint, type-check e testes rodando em CI.
@@ -249,6 +253,22 @@ Ordem: T0 → T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8. Nenhuma taref
 
 ---
 
+> Ajuste do ADR-003 sobre T5–T8: a entrada do forecast passa a ser `input/AAAA-MM-DD.csv` exportado da Lista `ForecastInput`; as saídas vão para a pasta sincronizada do SharePoint. A CLI tem dois comandos: `opex prepare` e `opex publish`.
+
+### T9 — Adaptador SharePoint (Python)
+- **Objetivo:** `opex prepare` escreve `forecast_base.xlsx` (tabela `tblBase`, colunas fixas do contrato) na pasta sincronizada; `opex publish` lê o CSV exportado.
+- **Restrições:** caminho da pasta via variável de ambiente `OPEX_SHAREPOINT_DIR`, nunca fixo no código; detectar arquivo bloqueado e abortar com mensagem clara; escrever em arquivo temporário e renomear (escrita atômica).
+- **Aceite:** testes com diretório temporário cobrindo arquivo bloqueado, CSV com colunas faltando e CSV com `linha_id` desconhecido.
+
+### T10 — Lista `ForecastInput` + fluxo "Fechar rodada" (Gabriel)
+- **Objetivo:** lista com colunas do contrato `forecast_input`, versionamento ativado, permissões restritas; fluxo manual que exporta a lista para CSV com cabeçalhos idênticos ao contrato.
+- **Aceite:** CSV exportado passa no validador da T9 sem ajustes.
+
+### T11 — Power Apps "Forecast Opex 2026" (Gabriel)
+- **Objetivo:** tela com galeria por N4 → projeto, filtro pelo responsável logado, formulário de edição dos campos de input, prévia `realizado + previsão` rotulada como prévia.
+- **Restrições:** nenhuma regra de classificação no app; exportar `.msapp` para `powerplatform/` a cada versão.
+- **Aceite:** responsável só edita as próprias linhas; campos obrigatórios validados; prévia bate com o teste de contrato.
+
 ## 6. Protocolo de revisão por tarefa
 
 Para cada entrega do Copilot: ler o diff inteiro → rodar `ruff`, `mypy`, `pytest --cov` → checar contra critérios de aceite e restrições → verificar mudanças fora do escopo → classificar **APPROVED / APPROVED WITH NOTES / CHANGES REQUIRED / BLOCKED** → se CHANGES REQUIRED, emitir prompt de correção objetivo.
@@ -256,3 +276,4 @@ Para cada entrega do Copilot: ler o diff inteiro → rodar `ruff`, `mypy`, `pyte
 ## 7. Registro de decisões (ADR)
 - ADR-001 (proposta): Forecast anual por projeto em vez de mensal, porque o faseamento mensal do ORC+BG contém revisões lançadas fora do mês (Fev = −17,3 mi). *Status: proposto.*
 - ADR-002 (proposta): Visão executiva separa saldo bruto, pressões e líquido. *Status: proposto.*
+- ADR-003: Canal de entrada — SharePoint (Excel para a base, Lista para o input) + Power Apps + pipeline Python local com exportação CSV via Power Automate. *Status: aceito.* Ver `docs/adr/ADR-003-canal-de-entrada-do-forecast.md`.
