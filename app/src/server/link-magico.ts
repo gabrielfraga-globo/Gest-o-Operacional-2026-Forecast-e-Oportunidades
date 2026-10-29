@@ -1,6 +1,8 @@
 import 'server-only';
+import { obterAmbiente } from './ambiente';
 import { query } from './db';
 import { enviarLinkAcesso } from './email';
+import { montarUrlConfirmacao } from './url-confirmacao';
 
 type UsuarioAtivo = { nome: string };
 
@@ -14,5 +16,5 @@ export async function enviarLinkMagico(email: string, url: string): Promise<void
   if (!usuario) {
     return;
   }
-  await enviarLinkAcesso(destino, usuario.nome, url);
+  await enviarLinkAcesso(destino, usuario.nome, montarUrlConfirmacao(url, obterAmbiente().authUrl));
 }

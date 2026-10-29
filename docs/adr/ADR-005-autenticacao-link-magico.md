@@ -53,3 +53,15 @@ Microsoft Entra ID dependeria da TI; senha compartilhada não identifica pessoas
 
 - **P1 (resolvida):** a atribuição de edição pode ser por N4 inteiro ou por projeto dentro do N4, via
   `usuario_acesso` (migration `20261028000006_usuarios.sql`). Substitui a premissa original "por N4 apenas".
+
+## Adendo 1 — 29/10/2026: confirmação do link
+
+- **Problema:** filtros de e-mail corporativo (Microsoft Safe Links) acessam o link antes do usuário e consomem o
+  token de uso único. O usuário então vê "link inválido".
+- **Decisão:** o e-mail aponta para a página pública `/entrar`, que não toca no banco nem no Better Auth. O token
+  só é usado quando o usuário clica em "Confirmar entrada", que navega para a rota de verificação.
+- **Validade do token:** inalterada (15 minutos, uso único).
+- **Domínio canônico:** deploys de produção em `*.vercel.app` são redirecionados (308) para `BETTER_AUTH_URL`,
+  para que o link sempre use o domínio oficial.
+- **Implementação:** `app/src/server/url-confirmacao.ts`, `app/src/app/entrar/`, `app/src/lib/host-canonico.ts`,
+  `app/src/proxy.ts`.
