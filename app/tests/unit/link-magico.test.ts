@@ -7,8 +7,15 @@ const mocks = vi.hoisted(() => ({
   enviarLinkAcesso: vi.fn(),
 }));
 
+const VERIFICACAO =
+  'https://app.exemplo.com/api/auth/magic-link/verify?token=abc123&callbackURL=%2F' +
+  '&errorCallbackURL=%2Flogin%3Ferro%3Dlink-invalido';
+
 vi.mock('@/server/db', () => ({ query: mocks.query }));
 vi.mock('@/server/email', () => ({ enviarLinkAcesso: mocks.enviarLinkAcesso }));
+vi.mock('@/server/ambiente', () => ({
+  obterAmbiente: () => ({ authUrl: 'https://app.exemplo.com' }),
+}));
 
 import { enviarLinkMagico } from '@/server/link-magico';
 
@@ -46,12 +53,23 @@ describe('enviarLinkMagico', () => {
   it('envia o link para usuário ativo com o nome cadastrado', async () => {
     mocks.query.mockResolvedValue([{ nome: 'Ana Souza' }]);
 
-    await enviarLinkMagico('ana@exemplo.com', 'https://app.exemplo.com/link');
+    await enviarLinkMagico('ana@exemplo.com', VERIFICACAO);
 
     expect(mocks.enviarLinkAcesso).toHaveBeenCalledWith(
       'ana@exemplo.com',
       'Ana Souza',
-      'https://app.exemplo.com/link',
+      'https://app.exemplo.com/entrar?token=abc123&callbackURL=%2F&errorCallbackURL=%2Flogin%3Ferro%3Dlink-invalido',
     );
   });
+
+  it('o e-mail aponta para /entrar e não para a rota que consome o token', async () => {
+    mocks.query.mockResolvedValue([{ nome: 'Ana Souza' }]);
+
+    await enviarLinkMagico('ana@exemplo.com', VERIFICACAO);
+
+    const link = mocks.enviarLinkAcesso.mock.calls[0]?.[2] as string;
+    expect(link).toContain('/entrar?');
+    expect(link).not.toContain('/api/auth/magic-link/verify');
+  });
 });
+

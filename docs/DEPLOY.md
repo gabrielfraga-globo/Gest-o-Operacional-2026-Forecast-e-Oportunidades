@@ -115,6 +115,7 @@ Marque cada item na URL de produção:
 - [ ] `GET /api/saude` responde `{"ok":true}` com status 200. Se responder 503, o app não alcança o banco: confira `DATABASE_URL` (host `-pooler`, `sslmode=require`).
 - [ ] Página de login abre em HTTPS, sem erro no console.
 - [ ] Login por link: e-mail recebido, link autentica, sessão persiste ao recarregar.
+- [ ] O link do e-mail abre a página `/entrar`; clicar em "Confirmar entrada" deve logar.
 - [ ] Não existe tela ou rota de cadastro. Só usuários da lista carregada entram.
 - [ ] Coleta: um usuário com perfil de coleta consegue registrar um lançamento de teste e ele aparece na tela.
 - [ ] Executivo: a página carrega os indicadores e o gráfico de cascata.
