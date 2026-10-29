@@ -10,6 +10,7 @@ export function proxy(request: NextRequest) {
 
   const publico =
     pathname === '/login' ||
+    pathname === '/api/saude' ||
     pathname.startsWith('/api/auth/') ||
     pathname.startsWith('/_next/') ||
     ARQUIVO_ESTATICO.test(pathname);

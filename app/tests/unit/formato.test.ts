@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatarMilhoes, formatarPercentual, formatarReais, formatarReaisInteiro } from '@/lib/formato';
+import { formatarMilhoes, formatarMilhoesCompacto, formatarPercentual, formatarReais, formatarReaisInteiro } from '@/lib/formato';
 
 describe('formatarReaisInteiro', () => {
   it('formata sem casas decimais com separador de milhar', () => {
@@ -102,6 +102,17 @@ describe('formatarMilhoes', () => {
 
   it('mantém o sinal quando o valor arredondado é diferente de zero', () => {
     expect(formatarMilhoes(-400000)).toBe('-R$ 0,4 mi'); // -0,4 mi
+  });
+});
+
+describe('formatarMilhoesCompacto', () => {
+  it('mostra só o número em milhões, sem R$ e sem mi', () => {
+    expect(formatarMilhoesCompacto(68623868.85)).toBe('68,6');
+    expect(formatarMilhoesCompacto(-2500000)).toBe('-2,5');
+  });
+
+  it('não põe sinal de menos quando o valor arredonda para zero', () => {
+    expect(formatarMilhoesCompacto(-40000)).toBe('0,0');
   });
 });
 
